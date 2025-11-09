@@ -8,12 +8,10 @@ yarn-error.log*
 build/
 dist/
 
-# Environment variables
+# Environment variables - CRITICAL - NEVER COMMIT THESE
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
 # IDE
 .vscode/
@@ -36,8 +34,10 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 
-# Firebase
+# Firebase - CRITICAL - NEVER COMMIT THESE
 firebase-service-account.json
+*-service-account.json
+service-account-*.json
 
 # Backup files
 *.backup
