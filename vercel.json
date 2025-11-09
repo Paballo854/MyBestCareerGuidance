@@ -1,0 +1,21 @@
+﻿{
+  \"version\": 2,
+  \"builds\": [
+    {
+      \"src\": \"frontend/career-platform/package.json\",
+      \"use\": \"@vercel/static-build\",
+      \"config\": { 
+        \"distDir\": \"build\"
+      }
+    }
+  ],
+  \"routes\": [
+    {
+      \"src\": \"/(.*)\",
+      \"dest\": \"/frontend/career-platform/\"
+    }
+  ],
+  \"env\": {
+    \"REACT_APP_API_URL\": \"https://your-backend-url.herokuapp.com/api\"
+  }
+}
