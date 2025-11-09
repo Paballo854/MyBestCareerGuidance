@@ -1,0 +1,12 @@
+﻿{
+  "version": 2,
+  "builds": [
+    {
+      "src": "career-platform/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    }
+  ]
+}
