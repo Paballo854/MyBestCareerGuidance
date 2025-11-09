@@ -1,0 +1,68 @@
+﻿const { db } = require("../config/firebase");
+
+const getCompanyDashboard = async (req, res) => {
+    try {
+        res.status(200).json({
+            success: true,
+            message: "Company dashboard data",
+            company: req.user,
+            features: [
+                "Post Job Opportunities",
+                "View Qualified Applicants", 
+                "Filter by Academic Performance",
+                "Manage Company Profile",
+                "Receive Applications for Interviews"
+            ]
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to get company dashboard",
+            error: error.message
+        });
+    }
+};
+
+const postJob = async (req, res) => {
+    try {
+        const { title, description, requirements, qualifications, salary, location } = req.body;
+        const companyEmail = req.user.email;
+
+        if (!title || !description || !requirements) {
+            return res.status(400).json({
+                success: false,
+                message: "Title, description and requirements are required"
+            });
+        }
+
+        const jobId = `${companyEmail}_${title.replace(/\s+/g, '_')}_${Date.now()}`;
+        await db.collection("jobPostings").doc(jobId).set({
+            jobId,
+            title,
+            description,
+            requirements,
+            qualifications,
+            salary,
+            location,
+            companyEmail,
+            companyName: req.user.lastName, // Using lastName as company name
+            postedAt: new Date().toISOString(),
+            isActive: true
+        });
+
+        res.status(201).json({
+            success: true,
+            message: "Job posted successfully",
+            jobId
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to post job",
+            error: error.message
+        });
+    }
+};
+
+module.exports = { getCompanyDashboard, postJob };
