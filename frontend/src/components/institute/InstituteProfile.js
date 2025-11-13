@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { instituteAPI } from '../../services/api';
 
 const InstituteProfile = () => {
   const [profile, setProfile] = useState({
@@ -12,31 +13,46 @@ const InstituteProfile = () => {
     description: '',
     contactPerson: '',
     contactEmail: '',
-    contactPhone: ''
+    contactPhone: '',
+    location: ''
   });
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Mock data - will connect to backend
-    setTimeout(() => {
-      setProfile({
-        name: 'Limkokwing University of Creative Technology',
-        email: 'admin@limkokwing.ac.ls',
-        phone: '+266 2231 3781',
-        address: 'Limkokwing University, Maseru, Lesotho',
-        website: 'https://www.limkokwing.ac.ls',
-        type: 'Private University',
-        established: '2008',
-        description: 'A leading creative technology university offering innovative programs in design, business, and information technology.',
-        contactPerson: 'Dr. Thabiso Monyamane',
-        contactEmail: 'admissions@limkokwing.ac.ls',
-        contactPhone: '+266 2231 3782'
-      });
-      setLoading(false);
-    }, 1000);
+    loadProfile();
   }, []);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await instituteAPI.getProfile();
+      if (response.success && response.profile) {
+        const p = response.profile;
+        setProfile({
+          name: p.lastName || p.name || p.institution?.name || '',
+          email: p.email || '',
+          phone: p.phone || '',
+          address: p.location || p.address || p.institution?.location || '',
+          website: p.website || p.institution?.website || '',
+          type: p.type || '',
+          established: p.established || '',
+          description: p.description || p.institution?.description || '',
+          contactPerson: p.contactPerson || '',
+          contactEmail: p.contactEmail || p.institution?.contactEmail || '',
+          contactPhone: p.contactPhone || '',
+          location: p.location || p.institution?.location || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      alert('Failed to load profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setProfile(prev => ({
@@ -45,14 +61,32 @@ const InstituteProfile = () => {
     }));
   };
 
-  const handleSave = () => {
-    // Will connect to backend API
-    setLoading(true);
-    setTimeout(() => {
-      alert('Institute profile updated successfully!');
-      setIsEditing(false);
-      setLoading(false);
-    }, 1000);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const profileData = {
+        name: profile.name,
+        location: profile.address || profile.location,
+        description: profile.description,
+        contactEmail: profile.contactEmail,
+        phone: profile.phone,
+        website: profile.website
+      };
+
+      const response = await instituteAPI.updateProfile(profileData);
+      if (response.success) {
+        alert('Institute profile updated successfully!');
+        setIsEditing(false);
+        loadProfile();
+      } else {
+        alert(response.message || 'Failed to update profile. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert(error.response?.data?.message || 'Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -75,7 +109,7 @@ const InstituteProfile = () => {
           className="btn btn-primary"
           disabled={loading}
         >
-          {isEditing ? (loading ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
+          {isEditing ? (saving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
         </button>
       </div>
 
@@ -332,7 +366,7 @@ const InstituteProfile = () => {
               className="btn btn-primary"
               disabled={loading}
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         )}

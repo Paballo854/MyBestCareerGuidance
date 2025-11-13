@@ -1,49 +1,54 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { adminAPI } from '../../services/api';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data - will connect to backend
-    setUsers([
-      {
-        id: 1,
-        name: 'John Doe',
-        email: 'john.doe@student.limkokwing.ac.ls',
-        role: 'student',
-        status: 'active',
-        registrationDate: '2024-08-15',
-        lastLogin: '2025-01-10',
-        institution: 'Limkokwing University',
-        verified: true
-      },
-      {
-        id: 2,
-        name: 'Limkokwing University',
-        email: 'admin@limkokwing.ac.ls',
-        role: 'institute',
-        status: 'active',
-        registrationDate: '2024-01-10',
-        lastLogin: '2025-01-09',
-        institution: 'Limkokwing University',
-        verified: true
-      },
-      {
-        id: 3,
-        name: 'Tech Solutions Ltd',
-        email: 'hr@techsolutions.ls',
-        role: 'company',
-        status: 'pending',
-        registrationDate: '2025-01-05',
-        lastLogin: '2025-01-05',
-        institution: 'Tech Solutions Ltd',
-        verified: false
-      }
-    ]);
+    loadUsers();
   }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await adminAPI.getUsers();
+      if (response.success && response.users) {
+        setUsers(response.users.map(user => ({
+          ...user,
+          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email,
+          verified: user.isVerified || false,
+          status: user.status || 'active',
+          registrationDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
+          lastLogin: user.lastLogin || 'Never'
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+      alert('Failed to load users. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (userId, newStatus) => {
+    try {
+      const response = await adminAPI.updateUserStatus(userId, newStatus);
+      if (response.success) {
+        alert('User status updated successfully!');
+        await loadUsers();
+        setSelectedUser(null);
+      } else {
+        alert(response.message || 'Failed to update user status.');
+      }
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      alert(error.response?.data?.message || 'Failed to update user status. Please try again.');
+    }
+  };
 
   const filteredUsers = users.filter(user => 
     (filterRole === '' || user.role === filterRole) &&
@@ -132,7 +137,11 @@ const UserManagement = () => {
             Users ({filteredUsers.length})
           </h3>
           
-          {filteredUsers.length === 0 ? (
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+              Loading users...
+            </div>
+          ) : filteredUsers.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
               No users found matching your filter criteria.
             </div>
@@ -233,7 +242,7 @@ const UserManagement = () => {
               </button>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '6px' }}>
+            <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '6px', marginBottom: '15px' }}>
               <p style={{ marginBottom: '5px' }}><strong>Name:</strong> {selectedUser.name}</p>
               <p style={{ marginBottom: '5px' }}><strong>Email:</strong> {selectedUser.email}</p>
               <p style={{ marginBottom: '5px' }}><strong>Role:</strong> 
@@ -249,9 +258,50 @@ const UserManagement = () => {
                   {selectedUser.role}
                 </span>
               </p>
-              <p style={{ marginBottom: '5px' }}><strong>Institution:</strong> {selectedUser.institution}</p>
+              <p style={{ marginBottom: '5px' }}><strong>Status:</strong> 
+                <span style={{
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  background: getStatusColor(selectedUser.status) + '20',
+                  color: getStatusColor(selectedUser.status),
+                  marginLeft: '8px'
+                }}>
+                  {selectedUser.status}
+                </span>
+              </p>
+              <p style={{ marginBottom: '5px' }}><strong>Verified:</strong> {selectedUser.verified ? 'Yes' : 'No'}</p>
               <p style={{ marginBottom: '5px' }}><strong>Registered:</strong> {selectedUser.registrationDate}</p>
               <p><strong>Last Login:</strong> {selectedUser.lastLogin}</p>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={() => handleUpdateStatus(selectedUser.id, 'active')}
+                className="btn btn-primary"
+                disabled={selectedUser.status === 'active'}
+                style={{ width: '100%' }}
+              >
+                Activate User
+              </button>
+              <button
+                onClick={() => handleUpdateStatus(selectedUser.id, 'suspended')}
+                className="btn btn-secondary"
+                disabled={selectedUser.status === 'suspended'}
+                style={{ width: '100%', background: '#f59e0b', color: 'white' }}
+              >
+                Suspend User
+              </button>
+              <button
+                onClick={() => handleUpdateStatus(selectedUser.id, 'inactive')}
+                className="btn btn-secondary"
+                disabled={selectedUser.status === 'inactive'}
+                style={{ width: '100%', background: '#6b7280', color: 'white' }}
+              >
+                Deactivate User
+              </button>
             </div>
           </div>
         )}

@@ -1,29 +1,55 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { adminAPI } from '../../services/api';
 
 const SystemReports = () => {
   const [timeRange, setTimeRange] = useState('month');
   const [reportType, setReportType] = useState('overview');
-
   const [reports, setReports] = useState({
     overview: {
-      totalUsers: 1250,
-      activeUsers: 980,
-      newRegistrations: 45,
-      totalApplications: 1567,
-      pendingApplications: 234,
-      approvedApplications: 890,
-      jobPostings: 67,
-      activeCompanies: 38
+      totalUsers: 0,
+      activeUsers: 0,
+      newRegistrations: 0,
+      totalApplications: 0,
+      pendingApplications: 0,
+      approvedApplications: 0,
+      jobPostings: 0,
+      activeCompanies: 0
     },
-    trends: [
-      { month: 'Jan', registrations: 120, applications: 245, jobPostings: 12 },
-      { month: 'Feb', registrations: 145, applications: 278, jobPostings: 15 },
-      { month: 'Mar', registrations: 165, applications: 312, jobPostings: 18 },
-      { month: 'Apr', registrations: 132, applications: 298, jobPostings: 14 },
-      { month: 'May', registrations: 178, applications: 345, jobPostings: 22 },
-      { month: 'Jun', registrations: 195, applications: 389, jobPostings: 25 }
-    ]
+    trends: []
   });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadReports();
+  }, [timeRange, reportType]);
+
+  const loadReports = async () => {
+    try {
+      setLoading(true);
+      const response = await adminAPI.getReports();
+      if (response.success && response.reports) {
+        const reportData = response.reports;
+        setReports({
+          overview: {
+            totalUsers: reportData.totalUsers || 0,
+            activeUsers: reportData.totalUsers || 0,
+            newRegistrations: 0, // Would need additional calculation
+            totalApplications: reportData.totalApplications || 0,
+            pendingApplications: reportData.applicationsByStatus?.pending || 0,
+            approvedApplications: reportData.applicationsByStatus?.approved || 0,
+            jobPostings: 0, // Would need additional data
+            activeCompanies: reportData.totalCompanies || 0
+          },
+          trends: [] // Would need time-based data
+        });
+      }
+    } catch (error) {
+      console.error('Error loading reports:', error);
+      alert('Failed to load reports. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -66,84 +92,84 @@ const SystemReports = () => {
         </div>
       </div>
 
-      {/* Overview Statistics */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-        gap: '20px', 
-        marginBottom: '30px' 
-      }}>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6', marginBottom: '8px' }}>
-            {reports.overview.totalUsers}
-          </div>
-          <div style={{ color: '#6b7280', fontWeight: '500' }}>Total Users</div>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <div>Loading reports...</div>
         </div>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
-            {reports.overview.totalApplications}
-          </div>
-          <div style={{ color: '#6b7280', fontWeight: '500' }}>Total Applications</div>
-        </div>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#8b5cf6', marginBottom: '8px' }}>
-            {reports.overview.jobPostings}
-          </div>
-          <div style={{ color: '#6b7280', fontWeight: '500' }}>Job Postings</div>
-        </div>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#f59e0b', marginBottom: '8px' }}>
-            {reports.overview.newRegistrations}
-          </div>
-          <div style={{ color: '#6b7280', fontWeight: '500' }}>New Registrations</div>
-        </div>
-      </div>
-
-      {/* Trends Chart */}
-      <div className="card">
-        <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937' }}>
-          Growth Trends
-        </h3>
-        <div style={{ height: '200px', display: 'flex', alignItems: 'flex-end', gap: '20px', padding: '20px 0' }}>
-          {reports.trends.map((trend, index) => {
-            const maxReg = Math.max(...reports.trends.map(t => t.registrations));
-            const maxApp = Math.max(...reports.trends.map(t => t.applications));
-            const regHeight = (trend.registrations / maxReg) * 100;
-            const appHeight = (trend.applications / maxApp) * 100;
-            
-            return (
-              <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ 
-                  background: '#3b82f6', 
-                  width: '15px', 
-                  height: regHeight + '%',
-                  borderRadius: '4px 4px 0 0',
-                  marginBottom: '5px'
-                }}></div>
-                <div style={{ 
-                  background: '#10b981', 
-                  width: '15px', 
-                  height: appHeight + '%',
-                  borderRadius: '4px 4px 0 0'
-                }}></div>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-                  {trend.month}
-                </div>
+      ) : (
+        <>
+          {/* Overview Statistics */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+            gap: '20px', 
+            marginBottom: '30px' 
+          }}>
+            <div className="card" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6', marginBottom: '8px' }}>
+                {reports.overview.totalUsers}
               </div>
-            );
-          })}
-        </div>
-        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '15px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '2px' }}></div>
-            <span style={{ fontSize: '12px', color: '#6b7280' }}>Registrations</span>
+              <div style={{ color: '#6b7280', fontWeight: '500' }}>Total Users</div>
+            </div>
+            <div className="card" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
+                {reports.overview.totalApplications}
+              </div>
+              <div style={{ color: '#6b7280', fontWeight: '500' }}>Total Applications</div>
+              <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
+                Pending: {reports.overview.pendingApplications} | Approved: {reports.overview.approvedApplications}
+              </div>
+            </div>
+            <div className="card" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#8b5cf6', marginBottom: '8px' }}>
+                {reports.overview.activeCompanies}
+              </div>
+              <div style={{ color: '#6b7280', fontWeight: '500' }}>Active Companies</div>
+            </div>
+            <div className="card" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#f59e0b', marginBottom: '8px' }}>
+                {reports.overview.pendingApplications}
+              </div>
+              <div style={{ color: '#6b7280', fontWeight: '500' }}>Pending Applications</div>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '12px', height: '12px', background: '#10b981', borderRadius: '2px' }}></div>
-            <span style={{ fontSize: '12px', color: '#6b7280' }}>Applications</span>
+        </>
+      )}
+
+      {/* Additional Statistics */}
+      {!loading && (
+        <div className="card">
+          <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937' }}>
+            System Statistics
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+            <div style={{ padding: '15px', background: '#f8fafc', borderRadius: '6px' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6', marginBottom: '5px' }}>
+                {reports.overview.totalUsers}
+              </div>
+              <div style={{ color: '#6b7280', fontSize: '14px' }}>Total Users</div>
+            </div>
+            <div style={{ padding: '15px', background: '#f8fafc', borderRadius: '6px' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981', marginBottom: '5px' }}>
+                {reports.overview.totalApplications}
+              </div>
+              <div style={{ color: '#6b7280', fontSize: '14px' }}>Total Applications</div>
+            </div>
+            <div style={{ padding: '15px', background: '#f8fafc', borderRadius: '6px' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#8b5cf6', marginBottom: '5px' }}>
+                {reports.overview.activeCompanies}
+              </div>
+              <div style={{ color: '#6b7280', fontSize: '14px' }}>Active Companies</div>
+            </div>
+            <div style={{ padding: '15px', background: '#f8fafc', borderRadius: '6px' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b', marginBottom: '5px' }}>
+                {reports.overview.pendingApplications}
+              </div>
+              <div style={{ color: '#6b7280', fontSize: '14px' }}>Pending Applications</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

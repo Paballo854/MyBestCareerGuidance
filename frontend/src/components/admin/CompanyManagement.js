@@ -1,45 +1,88 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { adminAPI } from '../../services/api';
 
 const CompanyManagement = () => {
   const [companies, setCompanies] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data - will connect to backend
-    setCompanies([
-      {
-        id: 1,
-        name: 'Tech Solutions Lesotho',
-        email: 'hr@techsolutions.ls',
-        industry: 'Information Technology',
-        status: 'approved',
-        registrationDate: '2024-06-15',
-        contactPerson: 'Mr. Thabo Mokoena',
-        contactEmail: 'thabo.mokoena@techsolutions.ls',
-        contactPhone: '+266 2834 5678',
-        address: 'Maseru, Lesotho',
-        website: 'www.techsolutions.ls',
-        jobPostings: 12,
-        verified: true
-      },
-      {
-        id: 2,
-        name: 'ABC Corporation',
-        email: 'careers@abccorp.ls',
-        industry: 'Manufacturing',
-        status: 'pending',
-        registrationDate: '2025-01-05',
-        contactPerson: 'Ms. Lerato Ntai',
-        contactEmail: 'lerato.ntai@abccorp.ls',
-        contactPhone: '+266 2234 7890',
-        address: 'Maseru, Lesotho',
-        website: 'www.abccorp.ls',
-        jobPostings: 0,
-        verified: false
-      }
-    ]);
+    loadCompanies();
   }, []);
+
+  const loadCompanies = async () => {
+    try {
+      setLoading(true);
+      const response = await adminAPI.getCompanies();
+      if (response.success && response.companies) {
+        setCompanies(response.companies.map(company => ({
+          ...company,
+          registrationDate: company.createdAt ? new Date(company.createdAt).toLocaleDateString() : 'N/A',
+          status: company.status || 'pending'
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading companies:', error);
+      alert('Failed to load companies. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApproveCompany = async (companyId) => {
+    try {
+      const response = await adminAPI.approveCompany(companyId);
+      if (response.success) {
+        alert('Company approved successfully!');
+        await loadCompanies();
+        setSelectedCompany(null);
+      } else {
+        alert(response.message || 'Failed to approve company.');
+      }
+    } catch (error) {
+      console.error('Error approving company:', error);
+      alert(error.response?.data?.message || 'Failed to approve company. Please try again.');
+    }
+  };
+
+  const handleSuspendCompany = async (companyId) => {
+    if (!window.confirm('Are you sure you want to suspend this company?')) {
+      return;
+    }
+    try {
+      const response = await adminAPI.suspendCompany(companyId);
+      if (response.success) {
+        alert('Company suspended successfully!');
+        await loadCompanies();
+        setSelectedCompany(null);
+      } else {
+        alert(response.message || 'Failed to suspend company.');
+      }
+    } catch (error) {
+      console.error('Error suspending company:', error);
+      alert(error.response?.data?.message || 'Failed to suspend company. Please try again.');
+    }
+  };
+
+  const handleDeleteCompany = async (companyId) => {
+    if (!window.confirm('Are you sure you want to delete this company? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      const response = await adminAPI.deleteCompany(companyId);
+      if (response.success) {
+        alert('Company deleted successfully!');
+        setSelectedCompany(null);
+        await loadCompanies();
+      } else {
+        alert(response.message || 'Failed to delete company.');
+      }
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      alert(error.response?.data?.message || 'Failed to delete company. Please try again.');
+    }
+  };
 
   const filteredCompanies = companies.filter(company => 
     filterStatus === '' || company.status === filterStatus
@@ -98,7 +141,11 @@ const CompanyManagement = () => {
             Companies ({filteredCompanies.length})
           </h3>
           
-          {filteredCompanies.length === 0 ? (
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+              Loading companies...
+            </div>
+          ) : filteredCompanies.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
               No companies found matching your filter criteria.
             </div>
@@ -123,16 +170,16 @@ const CompanyManagement = () => {
                       </h4>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                         <div>
-                          <strong>Industry:</strong> {company.industry}
+                          <strong>Industry:</strong> {company.industry || 'N/A'}
                         </div>
                         <div>
-                          <strong>Contact:</strong> {company.contactPerson}
+                          <strong>Email:</strong> {company.email || 'N/A'}
                         </div>
                         <div>
-                          <strong>Email:</strong> {company.contactEmail}
+                          <strong>Address:</strong> {company.address || 'N/A'}
                         </div>
                         <div>
-                          <strong>Job Postings:</strong> {company.jobPostings}
+                          <strong>Website:</strong> {company.website || 'N/A'}
                         </div>
                       </div>
                     </div>
@@ -176,16 +223,55 @@ const CompanyManagement = () => {
               </button>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '6px' }}>
+            <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '6px', marginBottom: '15px' }}>
               <p style={{ marginBottom: '5px' }}><strong>Name:</strong> {selectedCompany.name}</p>
-              <p style={{ marginBottom: '5px' }}><strong>Industry:</strong> {selectedCompany.industry}</p>
+              <p style={{ marginBottom: '5px' }}><strong>Industry:</strong> {selectedCompany.industry || 'N/A'}</p>
               <p style={{ marginBottom: '5px' }}><strong>Email:</strong> {selectedCompany.email}</p>
-              <p style={{ marginBottom: '5px' }}><strong>Address:</strong> {selectedCompany.address}</p>
-              <p style={{ marginBottom: '5px' }}><strong>Website:</strong> {selectedCompany.website}</p>
-              <p style={{ marginBottom: '5px' }}><strong>Contact Person:</strong> {selectedCompany.contactPerson}</p>
-              <p style={{ marginBottom: '5px' }}><strong>Contact Email:</strong> {selectedCompany.contactEmail}</p>
-              <p style={{ marginBottom: '5px' }}><strong>Contact Phone:</strong> {selectedCompany.contactPhone}</p>
-              <p><strong>Job Postings:</strong> {selectedCompany.jobPostings}</p>
+              <p style={{ marginBottom: '5px' }}><strong>Address:</strong> {selectedCompany.address || 'N/A'}</p>
+              <p style={{ marginBottom: '5px' }}><strong>Website:</strong> {selectedCompany.website || 'N/A'}</p>
+              <p style={{ marginBottom: '5px' }}><strong>Status:</strong> 
+                <span style={{
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  background: getStatusColor(selectedCompany.status) + '20',
+                  color: getStatusColor(selectedCompany.status),
+                  marginLeft: '8px'
+                }}>
+                  {selectedCompany.status}
+                </span>
+              </p>
+              <p style={{ marginBottom: '5px' }}><strong>Registered:</strong> {selectedCompany.registrationDate}</p>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {selectedCompany.status !== 'approved' && (
+                <button
+                  onClick={() => handleApproveCompany(selectedCompany.id)}
+                  className="btn btn-primary"
+                  style={{ width: '100%' }}
+                >
+                  Approve Company
+                </button>
+              )}
+              {selectedCompany.status !== 'suspended' && (
+                <button
+                  onClick={() => handleSuspendCompany(selectedCompany.id)}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', background: '#f59e0b', color: 'white' }}
+                >
+                  Suspend Company
+                </button>
+              )}
+              <button
+                onClick={() => handleDeleteCompany(selectedCompany.id)}
+                className="btn btn-secondary"
+                style={{ width: '100%', background: '#ef4444', color: 'white' }}
+              >
+                Delete Company
+              </button>
             </div>
           </div>
         )}

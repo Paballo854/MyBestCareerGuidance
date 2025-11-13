@@ -1,4 +1,4 @@
-﻿const { db } = require('../config/firebase');
+const { db } = require('../config/firebase');
 
 // Get student dashboard data
 const getDashboard = async (req, res) => {
@@ -98,7 +98,7 @@ const browseCourses = async (req, res) => {
 const applyForCourse = async (req, res) => {
     try {
         const { courseId, institutionId } = req.body;
-        const studentId = req.user.id;
+        const studentId = req.user.id || req.user.email;
         const studentEmail = req.user.email;
 
         // 1. Check if course exists
@@ -226,10 +226,11 @@ const checkStudentQualifications = async (studentData, courseData) => {
         }
     }
 
-    // 2. Check required subjects
+    // 2. Check required subjects (case-insensitive comparison)
     if (courseData.requiredSubjects && courseData.requiredSubjects.length > 0) {
-        const studentSubjects = studentData.subjects || [];
-        const missingSubjects = courseData.requiredSubjects.filter(subject => 
+        const studentSubjects = (studentData.subjects || []).map(s => s.toUpperCase());
+        const requiredSubjects = courseData.requiredSubjects.map(s => s.toUpperCase());
+        const missingSubjects = requiredSubjects.filter(subject => 
             !studentSubjects.includes(subject)
         );
         
@@ -286,11 +287,10 @@ const checkStudentQualifications = async (studentData, courseData) => {
 // Get student applications
 const getStudentApplications = async (req, res) => {
     try {
-        const studentId = req.user.id;
+        const studentId = req.user.id || req.user.email;
 
         const applicationsSnapshot = await db.collection('applications')
             .where('studentId', '==', studentId)
-            .orderBy('appliedAt', 'desc')
             .get();
 
         const applications = [];
@@ -301,16 +301,27 @@ const getStudentApplications = async (req, res) => {
             });
         });
 
+        // Sort by appliedAt date (newest first) in memory
+        applications.sort((a, b) => {
+            const dateA = a.appliedAt ? (a.appliedAt.toDate ? a.appliedAt.toDate() : new Date(a.appliedAt)) : new Date(0);
+            const dateB = b.appliedAt ? (b.appliedAt.toDate ? b.appliedAt.toDate() : new Date(b.appliedAt)) : new Date(0);
+            return dateB - dateA; // Descending order (newest first)
+        });
+
         res.json({ success: true, applications });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to fetch applications',
+            error: error.message 
+        });
     }
 };
 
 // Upload transcripts and certificates
 const uploadTranscripts = async (req, res) => {
     try {
-        const studentId = req.user.id;
+        const studentId = req.user.id || req.user.email;
         const { transcripts, certificates } = req.body;
 
         await db.collection('users').doc(studentId).update({
@@ -331,7 +342,7 @@ const uploadTranscripts = async (req, res) => {
 // Get student qualification profile
 const getQualificationProfile = async (req, res) => {
     try {
-        const studentId = req.user.id;
+        const studentId = req.user.id || req.user.email;
         const studentDoc = await db.collection('users').doc(studentId).get();
         
         if (!studentDoc.exists) {
@@ -373,26 +384,168 @@ const calculateOverallQualificationScore = (studentData) => {
     return Math.min(score, 100);
 };
 
+const calculateStudentJobMatch = (student, job) => {
+    let matchScore = 0;
+    const weights = {
+        academic: 0.3,
+        experience: 0.3,
+        certificates: 0.2,
+        skills: 0.2
+    };
+
+    const studentAcademic = typeof student.academicPerformance === 'number' ? student.academicPerformance : (student.highSchoolGrade || 0);
+    const requiredGPA = job.minGPA || 2.5;
+    const normalizedAcademic = studentAcademic > 10 ? studentAcademic / 10 : studentAcademic;
+    if (normalizedAcademic >= requiredGPA) {
+        matchScore += weights.academic * 100;
+    } else {
+        matchScore += weights.academic * (normalizedAcademic / requiredGPA) * 100;
+    }
+
+    const studentExperience = student.workExperience || student.experience || 0;
+    const requiredExperience = job.minExperience || 0;
+    if (studentExperience >= requiredExperience) {
+        matchScore += weights.experience * 100;
+    } else {
+        matchScore += weights.experience * (studentExperience / Math.max(requiredExperience, 1)) * 100;
+    }
+
+    const studentCertificates = student.certificates || [];
+    const requiredCertificates = job.requiredCertificates || [];
+    if (requiredCertificates.length > 0) {
+        const matchedCertificates = studentCertificates.filter(cert => 
+            requiredCertificates.some(reqCert => 
+                String(cert).toLowerCase().includes(String(reqCert).toLowerCase()) || 
+                String(reqCert).toLowerCase().includes(String(cert).toLowerCase())
+            )
+        );
+        matchScore += weights.certificates * (matchedCertificates.length / requiredCertificates.length) * 100;
+    } else {
+        matchScore += weights.certificates * 100;
+    }
+
+    const studentSkills = student.skills || [];
+    const jobRequirements = Array.isArray(job.requirements) ? job.requirements : (job.requirements ? [job.requirements] : []);
+    if (jobRequirements.length > 0 && studentSkills.length > 0) {
+        const matchedSkills = studentSkills.filter(skill =>
+            jobRequirements.some(req =>
+                String(skill).toLowerCase().includes(String(req).toLowerCase()) ||
+                String(req).toLowerCase().includes(String(skill).toLowerCase())
+            )
+        );
+        matchScore += weights.skills * (matchedSkills.length / jobRequirements.length) * 100;
+    } else {
+        matchScore += weights.skills * 100;
+    }
+
+    return Math.min(Math.round(matchScore), 100);
+};
+
+// Get student profile
+const getProfile = async (req, res) => {
+    try {
+        // Use email as document ID since users are stored with email as the document ID
+        const studentId = req.user.id || req.user.email;
+        
+        if (!studentId) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID not found in token'
+            });
+        }
+
+        const studentDoc = await db.collection('users').doc(studentId).get();
+        if (!studentDoc.exists) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Student not found' 
+            });
+        }
+
+        const studentData = studentDoc.data();
+        
+        // Remove sensitive data
+        const { password, ...profile } = studentData;
+
+        res.status(200).json({
+            success: true,
+            profile: profile
+        });
+
+    } catch (error) {
+        console.error('Error in getProfile:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch student profile",
+            error: error.message
+        });
+    }
+};
+
 // Update student profile
 const updateProfile = async (req, res) => {
     try {
-        const studentId = req.user.id;
+        // Use email as document ID since users are stored with email as the document ID
+        const studentId = req.user.id || req.user.email;
+        
+        if (!studentId) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID not found in token'
+            });
+        }
+
+        // Check if user document exists
+        const userDoc = await db.collection('users').doc(studentId).get();
+        if (!userDoc.exists) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
         const updateData = req.body;
 
+        // Remove fields that shouldn't be updated
         delete updateData.role;
         delete updateData.email;
         delete updateData.password;
+        delete updateData.createdAt;
+        delete updateData.isVerified;
+        delete updateData.verificationCode;
+        delete updateData.verificationCodeExpiry;
 
-        await db.collection('users').doc(studentId).update({
-            ...updateData,
-            updatedAt: new Date()
+        // Filter out undefined/null values and empty objects
+        const cleanUpdateData = {};
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] !== undefined && updateData[key] !== null && updateData[key] !== '') {
+                cleanUpdateData[key] = updateData[key];
+            }
         });
+
+        // Map highSchoolGrade to academicPerformance for compatibility with qualification checks
+        if (cleanUpdateData.highSchoolGrade !== undefined) {
+            cleanUpdateData.academicPerformance = parseFloat(cleanUpdateData.highSchoolGrade) || 0;
+        }
+
+        // Ensure subjects is an array if provided
+        if (cleanUpdateData.subjects && typeof cleanUpdateData.subjects === 'string') {
+            cleanUpdateData.subjects = cleanUpdateData.subjects.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+        }
+
+        // Add updatedAt timestamp
+        cleanUpdateData.updatedAt = new Date().toISOString();
+
+        // Use set with merge: true to handle partial updates safely
+        await db.collection('users').doc(studentId).set(cleanUpdateData, { merge: true });
 
         res.json({
             success: true,
             message: 'Profile updated successfully'
         });
     } catch (error) {
+        console.error('Error in updateProfile:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Failed to update profile',
@@ -406,7 +559,6 @@ const browseJobs = async (req, res) => {
     try {
         const snapshot = await db.collection('jobPostings')
             .where('status', '==', 'active')
-            .orderBy('postedAt', 'desc')
             .get();
 
         const jobs = [];
@@ -417,8 +569,16 @@ const browseJobs = async (req, res) => {
             });
         });
 
+        // Sort by postedAt date in memory (newest first)
+        jobs.sort((a, b) => {
+            const dateA = a.postedAt ? (a.postedAt.toDate ? a.postedAt.toDate() : new Date(a.postedAt)) : new Date(0);
+            const dateB = b.postedAt ? (b.postedAt.toDate ? b.postedAt.toDate() : new Date(b.postedAt)) : new Date(0);
+            return dateB - dateA; // Descending order (newest first)
+        });
+
         res.json({ success: true, jobs });
     } catch (error) {
+        console.error('Error in browseJobs:', error);
         res.status(500).json({ 
             success: false,
             message: 'Failed to fetch jobs',
@@ -431,7 +591,7 @@ const browseJobs = async (req, res) => {
 const applyForJob = async (req, res) => {
     try {
         const { jobId, coverLetter } = req.body;
-        const studentId = req.user.id;
+        const studentId = req.user.id || req.user.email;
         const studentEmail = req.user.email;
 
         const jobDoc = await db.collection('jobPostings').doc(jobId).get();
@@ -459,6 +619,8 @@ const applyForJob = async (req, res) => {
         const studentDoc = await db.collection('users').doc(studentId).get();
         const studentData = studentDoc.data();
 
+        const matchScore = calculateStudentJobMatch(studentData, jobData);
+
         const jobApplication = {
             studentId,
             studentEmail,
@@ -469,6 +631,7 @@ const applyForJob = async (req, res) => {
             coverLetter: coverLetter || '',
             appliedAt: new Date(),
             status: 'pending',
+            matchScore,
             studentQualifications: {
                 academicPerformance: studentData.academicPerformance,
                 certificates: studentData.certificates || [],
@@ -495,7 +658,7 @@ const applyForJob = async (req, res) => {
 // Get admission results
 const getAdmissionResults = async (req, res) => {
     try {
-        const studentId = req.user.id;
+        const studentId = req.user.id || req.user.email;
 
         // Get all applications (including pending, approved, rejected)
         const snapshot = await db.collection('applications')
@@ -541,7 +704,7 @@ const getAdmissionResults = async (req, res) => {
 const selectAdmission = async (req, res) => {
     try {
         const { selectedApplicationId } = req.body;
-        const studentId = req.user.id;
+        const studentId = req.user.id || req.user.email;
         const studentEmail = req.user.email;
 
         if (!selectedApplicationId) {
@@ -674,6 +837,7 @@ module.exports = {
     uploadTranscripts,
     getQualificationProfile,
     checkStudentQualifications,
+    getProfile,
     updateProfile,
     browseJobs,
     applyForJob,

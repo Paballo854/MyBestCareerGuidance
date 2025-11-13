@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../common/DashboardLayout';
 import CourseManagement from './CourseManagement';
 import ApplicationReview from './ApplicationReview';
@@ -6,6 +6,7 @@ import InstituteProfile from './InstituteProfile';
 import FacultyManagement from './FacultyManagement';
 import AdmissionPublication from './AdmissionPublication';
 import AnalyticsReports from './AnalyticsReports';
+import { instituteAPI } from '../../services/api';
 
 const InstituteDashboard = () => {
   const [stats, setStats] = useState({
@@ -17,17 +18,35 @@ const InstituteDashboard = () => {
   });
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [recentApplications, setRecentApplications] = useState([]);
 
   useEffect(() => {
-    // Mock data - will connect to your backend
-    setStats({
-      courses: 8,
-      applications: 45,
-      admitted: 15,
-      pending: 30,
-      faculty: 12
-    });
+    loadDashboardData();
   }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await instituteAPI.getDashboard();
+      if (response.success && response.dashboard) {
+        const dashboard = response.dashboard;
+        setStats({
+          courses: dashboard.totalCourses || 0,
+          applications: dashboard.totalApplications || 0,
+          admitted: dashboard.approvedApplications || 0,
+          pending: dashboard.pendingApplications || 0,
+          faculty: dashboard.totalFaculties || 0
+        });
+        setRecentApplications(dashboard.recentApplications || []);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+      alert('Failed to load dashboard data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const StatCard = ({ title, value, color }) => (
     <div className="card" style={{ textAlign: 'center' }}>
@@ -63,7 +82,6 @@ const InstituteDashboard = () => {
           onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
           onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          <div style={{ fontSize: '48px', marginBottom: '10px' }}>📚</div>
           <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>Manage Courses</h3>
           <p style={{ color: '#6b7280', fontSize: '14px' }}>Add and manage academic programs</p>
         </div>
@@ -75,7 +93,6 @@ const InstituteDashboard = () => {
           onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
           onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          <div style={{ fontSize: '48px', marginBottom: '10px' }}>📋</div>
           <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>Review Applications</h3>
           <p style={{ color: '#6b7280', fontSize: '14px' }}>Process student applications</p>
         </div>
@@ -87,7 +104,6 @@ const InstituteDashboard = () => {
           onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
           onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          <div style={{ fontSize: '48px', marginBottom: '10px' }}>👨‍🏫</div>
           <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>Faculty Management</h3>
           <p style={{ color: '#6b7280', fontSize: '14px' }}>Manage teaching staff</p>
         </div>
@@ -123,7 +139,6 @@ const InstituteDashboard = () => {
           onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
           onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          <div style={{ fontSize: '48px', marginBottom: '10px' }}>🏫</div>
           <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>Institute Profile</h3>
           <p style={{ color: '#6b7280', fontSize: '14px' }}>Update institution information</p>
         </div>
@@ -134,14 +149,31 @@ const InstituteDashboard = () => {
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937' }}>
           Recent Activity
         </h2>
-        <div style={{ color: '#6b7280' }}>
-          <p>✅ New application received from John Doe - BSc in IT</p>
-          <p>📋 Application from Jane Smith marked Under Review</p>
-          <p>🎓 Mike Johnson admitted to Software Engineering</p>
-          <p>📚 New course 'Diploma in Data Science' added</p>
-          <p>👨‍🏫 Dr. Thabiso Monyamane added to faculty</p>
-          <p>📊 15 applications processed this week</p>
-        </div>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+            Loading recent activity...
+          </div>
+        ) : recentApplications.length > 0 ? (
+          <div style={{ color: '#6b7280' }}>
+            {recentApplications.map((app, index) => {
+              const studentName = app.student ? `${app.student.firstName || ''} ${app.student.lastName || ''}`.trim() : 'Unknown Student';
+              const courseName = app.courseName || app.course?.name || 'Unknown Course';
+              const status = app.status || 'pending';
+              const appliedDate = app.appliedAt ? new Date(app.appliedAt.seconds ? app.appliedAt.seconds * 1000 : app.appliedAt).toLocaleDateString() : 'Recently';
+              
+              return (
+                <p key={index}>
+                  {status === 'approved' ? 'Admitted' : status === 'rejected' ? 'Rejected' : 'Application from'} 
+                  {studentName} - {courseName} ({appliedDate})
+                </p>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+            No recent activity
+          </div>
+        )}
       </div>
     </>
   );

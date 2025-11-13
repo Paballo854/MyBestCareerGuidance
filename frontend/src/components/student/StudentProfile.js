@@ -14,6 +14,8 @@ const StudentProfile = () => {
     highSchool: '',
     graduationYear: '',
     currentEducation: '',
+    subjects: [],
+    highSchoolGrade: '',
     interests: []
   });
 
@@ -28,26 +30,31 @@ const StudentProfile = () => {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      // REAL API CALL to get student profile
       const response = await studentAPI.getProfile();
-      setProfile(response.profile || response);
+      if (response.success && response.profile) {
+        setProfile({
+          firstName: response.profile.firstName || '',
+          lastName: response.profile.lastName || '',
+          email: response.profile.email || '',
+          phone: response.profile.phone || '',
+          address: response.profile.address || '',
+          dateOfBirth: response.profile.dateOfBirth || '',
+          gender: response.profile.gender || '',
+          nationality: response.profile.nationality || '',
+          highSchool: response.profile.highSchool || '',
+          graduationYear: response.profile.graduationYear || '',
+          currentEducation: response.profile.currentEducation || '',
+          subjects: response.profile.subjects || [],
+          highSchoolGrade: response.profile.highSchoolGrade || response.profile.academicPerformance || '',
+          interests: response.profile.interests || []
+        });
+      } else {
+        // If no profile data, keep empty state
+        console.warn('No profile data received');
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
-      // Fallback to mock data if API fails
-      setProfile({
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@student.limkokwing.ac.ls',
-        phone: '+266 1234 5678',
-        address: '123 Main Street, Maseru, Lesotho',
-        dateOfBirth: '2000-05-15',
-        gender: 'Male',
-        nationality: 'Mosotho',
-        highSchool: 'Maseru High School',
-        graduationYear: '2018',
-        currentEducation: 'BSc in Information Technology',
-        interests: ['Programming', 'Web Development', 'Data Science', 'AI']
-      });
+      alert('Failed to load profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -64,12 +71,19 @@ const StudentProfile = () => {
     try {
       setSaving(true);
       // REAL API CALL to update profile
-      await studentAPI.updateProfile(profile);
-      alert('Profile updated successfully!');
-      setIsEditing(false);
+      const response = await studentAPI.updateProfile(profile);
+      if (response.success) {
+        alert('Profile updated successfully!');
+        setIsEditing(false);
+        // Reload profile to get updated data
+        await loadProfile();
+      } else {
+        alert(response.message || 'Failed to update profile. Please try again.');
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile. Please try again.');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to update profile. Please try again.';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -347,6 +361,133 @@ const StudentProfile = () => {
                 }}
               />
             </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', color: '#374151' }}>
+                High School Grade (%)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={profile.highSchoolGrade}
+                onChange={(e) => handleInputChange('highSchoolGrade', e.target.value)}
+                disabled={!isEditing}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  background: isEditing ? 'white' : '#f9fafb'
+                }}
+                placeholder="e.g., 75"
+              />
+              <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                Your overall high school grade percentage (0-100)
+              </small>
+            </div>
+          </div>
+
+          {/* Subject Symbols */}
+          <div style={{ marginTop: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '10px', fontWeight: '500', color: '#374151' }}>
+              Subject Symbols ({profile.subjects.length})
+            </label>
+            <small style={{ color: '#6b7280', fontSize: '12px', marginBottom: '10px', display: 'block' }}>
+              Enter the subject symbols you studied (e.g., MATH, PHYSICS, CHEMISTRY, ENGLISH)
+            </small>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
+              {profile.subjects.map((subject, index) => (
+                <span
+                  key={index}
+                  style={{
+                    background: '#10b981',
+                    color: 'white',
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {subject}
+                  {isEditing && (
+                    <button
+                      onClick={() => {
+                        setProfile(prev => ({
+                          ...prev,
+                          subjects: prev.subjects.filter(s => s !== subject)
+                        }));
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        padding: '0',
+                        width: '16px',
+                        height: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+
+            {isEditing && (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  placeholder="Enter subject symbol (e.g., MATH)"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const subject = e.target.value.trim().toUpperCase();
+                      if (subject && !profile.subjects.includes(subject)) {
+                        setProfile(prev => ({
+                          ...prev,
+                          subjects: [...prev.subjects, subject]
+                        }));
+                        e.target.value = '';
+                      }
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    const input = e.target.previousElementSibling;
+                    const subject = input.value.trim().toUpperCase();
+                    if (subject && !profile.subjects.includes(subject)) {
+                      setProfile(prev => ({
+                        ...prev,
+                        subjects: [...prev.subjects, subject]
+                      }));
+                      input.value = '';
+                    }
+                  }}
+                  className="btn btn-secondary"
+                  style={{ background: '#10b981', color: 'white' }}
+                >
+                  Add Subject
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

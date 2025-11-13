@@ -14,6 +14,7 @@ const {
   applyForJob,
   getAdmissionResults,
   selectAdmission,
+  getProfile,
   updateProfile
 } = require('../controllers/studentController');
 
@@ -27,6 +28,11 @@ const router = express.Router();
 // @route   GET /api/student/dashboard
 // @access  Private (Student)
 router.get('/dashboard', authMiddleware, getDashboard);
+
+// @desc    Get student profile
+// @route   GET /api/student/profile
+// @access  Private (Student)
+router.get('/profile', authMiddleware, getProfile);
 
 // @desc    Update student profile
 // @route   PUT /api/student/profile
@@ -99,16 +105,25 @@ router.post('/upload-transcripts', authMiddleware, uploadTranscripts);
 // @access  Private (Student)
 router.get('/documents', authMiddleware, async (req, res) => {
     try {
-        const studentId = req.user.id;
+        const studentId = req.user.id || req.user.email;
 
         const snapshot = await db.collection('documents')
             .where('studentId', '==', studentId)
-            .orderBy('uploadDate', 'desc')
             .get();
 
         const documents = [];
         snapshot.forEach(doc => {
-            documents.push(doc.data());
+            documents.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+
+        // Sort by uploadDate in memory (newest first)
+        documents.sort((a, b) => {
+            const dateA = a.uploadDate ? new Date(a.uploadDate) : new Date(0);
+            const dateB = b.uploadDate ? new Date(b.uploadDate) : new Date(0);
+            return dateB - dateA;
         });
 
         res.json({
@@ -119,7 +134,8 @@ router.get('/documents', authMiddleware, async (req, res) => {
         console.error('Error fetching documents:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to fetch documents'
+            message: 'Failed to fetch documents',
+            error: error.message
         });
     }
 });
@@ -130,7 +146,7 @@ router.get('/documents', authMiddleware, async (req, res) => {
 router.post('/documents/upload', authMiddleware, async (req, res) => {
     try {
         const { fileName, fileType, documentType } = req.body;
-        const studentId = req.user.id;
+        const studentId = req.user.id || req.user.email;
 
         const documentData = {
             id: Date.now().toString(),

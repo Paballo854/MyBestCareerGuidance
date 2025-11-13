@@ -124,17 +124,17 @@ async function configureSendGrid() {
     require('dotenv').config({ override: true });
     
     if (process.env.SENDGRID_FROM_EMAIL === verifiedEmail) {
-        console.log('\n✅ Configuration verified!');
+        console.log('\nConfiguration verified');
         console.log(`   From Email: ${process.env.SENDGRID_FROM_EMAIL}`);
         if (process.env.SENDGRID_API_KEY) {
             console.log(`   API Key: ${process.env.SENDGRID_API_KEY.substring(0, 15)}... (SET)`);
         }
     } else {
-        console.log('\n⚠️  Configuration might need a server restart to take effect');
+        console.log('\nConfiguration might need a server restart to take effect');
     }
     
     console.log('\n' + '='.repeat(50));
-    console.log('✅ SETUP COMPLETE!');
+    console.log('SETUP COMPLETE');
     console.log('='.repeat(50));
     console.log('\nNext steps:');
     console.log('1. Restart your server: npm start');
@@ -147,7 +147,7 @@ async function configureSendGrid() {
 
 // Run the configuration
 configureSendGrid().catch(error => {
-    console.error('\n❌ Error:', error.message);
+    console.error('\nError:', error.message);
     rl.close();
     process.exit(1);
 });

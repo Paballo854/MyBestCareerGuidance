@@ -16,25 +16,16 @@ const ApplicationReview = () => {
   const loadApplications = async () => {
     try {
       setLoading(true);
-      const response = await instituteAPI.getStudentApplications();
-      setApplications(response.applications || []);
+      const response = await instituteAPI.getApplications();
+      if (response.success && response.applications) {
+        setApplications(response.applications || []);
+      } else {
+        setApplications([]);
+      }
     } catch (error) {
       console.error('Error loading applications:', error);
       alert('Failed to load applications. Please try again.');
-      
-      // Fallback to mock data if API fails
-      setApplications([
-        {
-          id: '1',
-          studentId: 'STU001',
-          student: { firstName: 'John', lastName: 'Doe', email: 'john.doe@student.com' },
-          course: { name: 'BSc in Information Technology', faculty: 'ICT' },
-          status: 'pending',
-          appliedAt: '2025-01-15',
-          courseName: 'BSc in Information Technology',
-          institutionName: 'Limkokwing University'
-        }
-      ]);
+      setApplications([]);
     } finally {
       setLoading(false);
     }
@@ -52,25 +43,26 @@ const ApplicationReview = () => {
     try {
       setUpdating(applicationId);
       
-      await instituteAPI.updateApplicationStatus({
-        applicationId,
-        status: newStatus
-      });
+      const response = await instituteAPI.updateApplicationStatus(applicationId, newStatus);
+      
+      if (response.success) {
+        // Update local state
+        setApplications(prev => prev.map(app =>
+          app.id === applicationId ? { ...app, status: newStatus } : app
+        ));
 
-      // Update local state
-      setApplications(prev => prev.map(app =>
-        app.id === applicationId ? { ...app, status: newStatus } : app
-      ));
+        if (selectedApplication && selectedApplication.id === applicationId) {
+          setSelectedApplication(prev => ({ ...prev, status: newStatus }));
+        }
 
-      if (selectedApplication && selectedApplication.id === applicationId) {
-        setSelectedApplication(prev => ({ ...prev, status: newStatus }));
+        alert('Application status updated to: ' + newStatus);
+      } else {
+        alert(response.message || 'Failed to update application status. Please try again.');
       }
-
-      alert('Application status updated to: ' + newStatus);
       
     } catch (error) {
       console.error('Error updating application:', error);
-      alert('Failed to update application status. Please try again.');
+      alert(error.response?.data?.message || 'Failed to update application status. Please try again.');
     } finally {
       setUpdating(null);
     }
@@ -229,7 +221,7 @@ const ApplicationReview = () => {
                         {app.courseName || app.course?.name}
                       </p>
                       <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '5px' }}>
-                        Applied: {new Date(app.appliedAt || app.applyDate).toLocaleDateString()}
+                        Applied: {app.appliedAt ? (app.appliedAt.seconds ? new Date(app.appliedAt.seconds * 1000).toLocaleDateString() : new Date(app.appliedAt).toLocaleDateString()) : app.applyDate ? new Date(app.applyDate).toLocaleDateString() : 'N/A'}
                       </p>
                       <p style={{ color: '#6b7280', fontSize: '14px' }}>
                         Email: {app.student?.email}
@@ -286,7 +278,7 @@ const ApplicationReview = () => {
                 <p style={{ marginBottom: '5px' }}><strong>Name:</strong> {selectedApplication.student?.firstName} {selectedApplication.student?.lastName}</p>
                 <p style={{ marginBottom: '5px' }}><strong>Student ID:</strong> {selectedApplication.studentId}</p>
                 <p style={{ marginBottom: '5px' }}><strong>Email:</strong> {selectedApplication.student?.email}</p>
-                <p style={{ marginBottom: '5px' }}><strong>Applied:</strong> {new Date(selectedApplication.appliedAt || selectedApplication.applyDate).toLocaleDateString()}</p>
+                <p style={{ marginBottom: '5px' }}><strong>Applied:</strong> {selectedApplication.appliedAt ? (selectedApplication.appliedAt.seconds ? new Date(selectedApplication.appliedAt.seconds * 1000).toLocaleDateString() : new Date(selectedApplication.appliedAt).toLocaleDateString()) : selectedApplication.applyDate ? new Date(selectedApplication.applyDate).toLocaleDateString() : 'N/A'}</p>
               </div>
             </div>
 

@@ -1,4 +1,4 @@
-﻿import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
 
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     
     try {
-      console.log('🔐 Attempting login with:', credentials);
+      console.log('Attempting login with:', credentials);
 
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
@@ -36,14 +36,14 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      console.log('📡 Login response:', data);
+      console.log('Login response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Login failed');
       }
 
       if (data.success) {
-        console.log('✅ Login successful');
+        console.log('Login successful');
         setUser(data.user);
         localStorage.setItem('user', JSON.stringify(data.user));
         if (data.token) {
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message || 'Login failed');
       }
     } catch (error) {
-      console.error('❌ Login error:', error);
+      console.error('Login error:', error);
       const errorMessage = error.message || 'Login failed. Please check your credentials.';
       setError(errorMessage);
       return { success: false, error: errorMessage };
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     
     try {
-      console.log('👤 Attempting registration with:', userData);
+      console.log('Attempting registration with:', userData);
 
       const response = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
@@ -86,14 +86,14 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      console.log('📡 Register response:', data);
+      console.log('Register response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Registration failed');
       }
 
       if (data.success) {
-        console.log('✅ Registration successful');
+        console.log('Registration successful');
         setUser(data.user);
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message || 'Registration failed');
       }
     } catch (error) {
-      console.error('❌ Register error:', error);
+      console.error('Register error:', error);
       const errorMessage = error.message || 'Registration failed. Please try again.';
       setError(errorMessage);
       return { success: false, error: errorMessage };

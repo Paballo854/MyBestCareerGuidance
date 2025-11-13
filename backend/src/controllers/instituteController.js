@@ -246,7 +246,19 @@ const deleteFaculty = async (req, res) => {
 // Add new course (updated to use facultyId)
 const addCourse = async (req, res) => {
     try {
-        const { name, description, facultyId, field, qualification, requirements, duration, fees } = req.body;
+        const { 
+            name, 
+            description, 
+            facultyId, 
+            field, 
+            qualification, 
+            requirements, 
+            duration, 
+            fees,
+            requiredSubjects,
+            minimumGrade,
+            additionalRequirements
+        } = req.body;
         const instituteId = req.user.id;
         const instituteEmail = req.user.email;
         const instituteName = req.user.lastName || req.user.firstName;
@@ -293,6 +305,19 @@ const addCourse = async (req, res) => {
             availableSeats: 50
         };
 
+        // Add subject symbols and requirements if provided
+        if (requiredSubjects && Array.isArray(requiredSubjects) && requiredSubjects.length > 0) {
+            courseData.requiredSubjects = requiredSubjects;
+        }
+
+        if (minimumGrade !== undefined && minimumGrade !== null) {
+            courseData.minimumGrade = parseFloat(minimumGrade);
+        }
+
+        if (additionalRequirements && Array.isArray(additionalRequirements) && additionalRequirements.length > 0) {
+            courseData.additionalRequirements = additionalRequirements;
+        }
+
         const courseRef = await db.collection("courses").add(courseData);
 
         res.status(201).json({
@@ -336,6 +361,284 @@ const getInstituteCourses = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to get courses",
+            error: error.message
+        });
+    }
+};
+
+// Update course
+const updateCourse = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const updateData = req.body;
+        const instituteId = req.user.id;
+        const instituteEmail = req.user.email;
+
+        // Verify the course belongs to this institute
+        const courseDoc = await db.collection("courses").doc(courseId).get();
+        if (!courseDoc.exists) {
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+        }
+
+        const course = courseDoc.data();
+        if (course.instituteEmail !== instituteEmail && course.institutionId !== instituteId) {
+            return res.status(403).json({
+                success: false,
+                message: "Not authorized to update this course"
+            });
+        }
+
+        // Process subject symbols and requirements if provided
+        const cleanUpdateData = {
+            ...updateData,
+            updatedAt: new Date()
+        };
+
+        // Handle requiredSubjects if it's a string (comma-separated)
+        if (updateData.requiredSubjects && typeof updateData.requiredSubjects === 'string') {
+            cleanUpdateData.requiredSubjects = updateData.requiredSubjects
+                .split(',')
+                .map(s => s.trim().toUpperCase())
+                .filter(s => s);
+        }
+
+        // Handle additionalRequirements if it's a string (comma-separated)
+        if (updateData.additionalRequirements && typeof updateData.additionalRequirements === 'string') {
+            cleanUpdateData.additionalRequirements = updateData.additionalRequirements
+                .split(',')
+                .map(r => r.trim())
+                .filter(r => r);
+        }
+
+        // Handle minimumGrade conversion
+        if (updateData.minimumGrade !== undefined && updateData.minimumGrade !== null) {
+            cleanUpdateData.minimumGrade = parseFloat(updateData.minimumGrade);
+        }
+
+        await db.collection("courses").doc(courseId).update(cleanUpdateData);
+
+        res.status(200).json({
+            success: true,
+            message: "Course updated successfully"
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to update course",
+            error: error.message
+        });
+    }
+};
+
+// Delete course
+const deleteCourse = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const instituteId = req.user.id;
+        const instituteEmail = req.user.email;
+
+        // Verify the course belongs to this institute
+        const courseDoc = await db.collection("courses").doc(courseId).get();
+        if (!courseDoc.exists) {
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+        }
+
+        const course = courseDoc.data();
+        if (course.instituteEmail !== instituteEmail && course.institutionId !== instituteId) {
+            return res.status(403).json({
+                success: false,
+                message: "Not authorized to delete this course"
+            });
+        }
+
+        // Check if course has applications
+        const applicationsSnapshot = await db.collection("applications")
+            .where("courseId", "==", courseId)
+            .get();
+
+        if (!applicationsSnapshot.empty) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot delete course with existing applications. Please handle applications first."
+            });
+        }
+
+        await db.collection("courses").doc(courseId).delete();
+
+        res.status(200).json({
+            success: true,
+            message: "Course deleted successfully"
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete course",
+            error: error.message
+        });
+    }
+};
+
+// Get admission results
+const getAdmissionResults = async (req, res) => {
+    try {
+        const instituteId = req.user.id;
+
+        const applicationsSnapshot = await db.collection("applications")
+            .where("institutionId", "==", instituteId)
+            .get();
+
+        const admissions = [];
+        
+        for (const doc of applicationsSnapshot.docs) {
+            const application = doc.data();
+            
+            // Only include applications with decisions (approved, rejected, waitlisted)
+            if (['approved', 'rejected', 'waitlisted'].includes(application.status)) {
+                // Get student details
+                const studentDoc = await db.collection("users").doc(application.studentId).get();
+                const student = studentDoc.exists ? studentDoc.data() : null;
+                
+                // Get course details
+                const courseDoc = await db.collection("courses").doc(application.courseId).get();
+                const course = courseDoc.exists ? courseDoc.data() : null;
+
+                admissions.push({
+                    id: doc.id,
+                    ...application,
+                    student: student ? {
+                        firstName: student.firstName,
+                        lastName: student.lastName,
+                        email: student.email
+                    } : null,
+                    course: course ? {
+                        name: course.name
+                    } : null
+                });
+            }
+        }
+
+        // Sort by updatedAt descending
+        admissions.sort((a, b) => {
+            const aDate = a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
+            const bDate = b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
+            return bDate - aDate;
+        });
+
+        res.status(200).json({
+            success: true,
+            admissions
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to get admission results",
+            error: error.message
+        });
+    }
+};
+
+// Get analytics
+const getAnalytics = async (req, res) => {
+    try {
+        const instituteId = req.user.id;
+        const instituteEmail = req.user.email;
+
+        // Get all applications
+        const applicationsSnapshot = await db.collection("applications")
+            .where("institutionId", "==", instituteId)
+            .get();
+
+        const applications = [];
+        applicationsSnapshot.forEach(doc => {
+            applications.push(doc.data());
+        });
+
+        // Get all courses
+        const coursesSnapshot = await db.collection("courses")
+            .where("instituteEmail", "==", instituteEmail)
+            .get();
+
+        const courses = [];
+        coursesSnapshot.forEach(doc => {
+            courses.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+
+        // Calculate application stats
+        const totalApplications = applications.length;
+        const admitted = applications.filter(app => app.status === 'approved').length;
+        const rejected = applications.filter(app => app.status === 'rejected').length;
+        const pending = applications.filter(app => app.status === 'pending').length;
+
+        // Calculate course performance
+        const coursePerformance = courses.map(course => {
+            const courseApps = applications.filter(app => app.courseId === course.id);
+            const courseAdmitted = courseApps.filter(app => app.status === 'approved').length;
+            const conversion = courseApps.length > 0 ? ((courseAdmitted / courseApps.length) * 100).toFixed(1) : 0;
+            
+            return {
+                name: course.name,
+                applications: courseApps.length,
+                admitted: courseAdmitted,
+                conversion: parseFloat(conversion)
+            };
+        });
+
+        // Simple trends (last 6 months)
+        const trends = [];
+        const now = new Date();
+        for (let i = 5; i >= 0; i--) {
+            const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthName = monthDate.toLocaleDateString('en-US', { month: 'short' });
+            
+            const monthApps = applications.filter(app => {
+                const appDate = app.appliedAt?.seconds ? new Date(app.appliedAt.seconds * 1000) : (app.appliedAt ? new Date(app.appliedAt) : null);
+                if (!appDate) return false;
+                return appDate.getMonth() === monthDate.getMonth() && appDate.getFullYear() === monthDate.getFullYear();
+            });
+            
+            const monthAdmitted = monthApps.filter(app => app.status === 'approved').length;
+            
+            trends.push({
+                month: monthName,
+                applications: monthApps.length,
+                admitted: monthAdmitted
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            analytics: {
+                applications: {
+                    total: totalApplications,
+                    admitted,
+                    rejected,
+                    pending
+                },
+                courses: coursePerformance,
+                trends,
+                demographics: {
+                    gender: { male: 0, female: 0 },
+                    location: {}
+                }
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to get analytics",
             error: error.message
         });
     }
@@ -564,8 +867,12 @@ module.exports = {
     deleteFaculty,
     addCourse,
     getInstituteCourses,
+    updateCourse,
+    deleteCourse,
     getStudentApplications,
     updateApplicationStatus,
     updateInstituteProfile,
-    getInstituteProfile
+    getInstituteProfile,
+    getAdmissionResults,
+    getAnalytics
 };

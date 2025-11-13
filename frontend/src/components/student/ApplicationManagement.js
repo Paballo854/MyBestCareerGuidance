@@ -17,27 +17,25 @@ const ApplicationManagement = () => {
       
       // Load current applications
       const appsResponse = await studentAPI.getMyApplications();
-      setApplications(appsResponse.applications || []);
+      if (appsResponse.success && appsResponse.applications) {
+        setApplications(appsResponse.applications);
+      } else {
+        setApplications([]);
+      }
       
       // Load admission results
       const admissionsResponse = await studentAPI.getAdmissionResults();
-      setAdmissions(admissionsResponse.admissions || []);
+      if (admissionsResponse.success && admissionsResponse.admissions) {
+        setAdmissions(admissionsResponse.admissions);
+      } else {
+        setAdmissions([]);
+      }
       
     } catch (error) {
       console.error('Error loading applications:', error);
       alert('Failed to load applications. Please try again.');
-      
-      // Fallback to mock data if API fails
-      setApplications([
-        {
-          id: '1',
-          institutionName: 'Limkokwing University',
-          courseName: 'BSc in Information Technology',
-          status: 'pending',
-          appliedAt: '2025-01-15',
-          institutionEmail: 'admissions@limkokwing.ac.ls'
-        }
-      ]);
+      setApplications([]);
+      setAdmissions([]);
     } finally {
       setLoading(false);
     }
@@ -67,12 +65,17 @@ const ApplicationManagement = () => {
 
   const handleAcceptOffer = async (applicationId) => {
     try {
-      // This would call your backend to accept the admission offer
-      alert('Accepting admission offer for application: ' + applicationId);
-      // await studentAPI.acceptAdmission(applicationId);
+      const response = await studentAPI.selectAdmission(applicationId);
+      if (response.success) {
+        alert(response.message || 'Admission offer accepted successfully!');
+        // Reload applications to show updated status
+        await loadApplications();
+      } else {
+        alert(response.message || 'Failed to accept offer. Please try again.');
+      }
     } catch (error) {
       console.error('Error accepting offer:', error);
-      alert('Failed to accept offer. Please try again.');
+      alert(error.response?.data?.message || 'Failed to accept offer. Please try again.');
     }
   };
 
@@ -150,7 +153,7 @@ const ApplicationManagement = () => {
                   <strong>Institution:</strong> {app.institutionName || app.institution}
                 </p>
                 <p style={{ color: '#6b7280', marginBottom: '5px' }}>
-                  <strong>Applied:</strong> {new Date(app.appliedAt || app.date).toLocaleDateString()}
+                  <strong>Applied:</strong> {app.appliedAt ? (app.appliedAt.toDate ? app.appliedAt.toDate().toLocaleDateString() : new Date(app.appliedAt).toLocaleDateString()) : (app.date ? new Date(app.date).toLocaleDateString() : 'N/A')}
                 </p>
                 <p style={{ color: '#6b7280', marginBottom: '10px' }}>
                   <strong>Application ID:</strong> {app.id}

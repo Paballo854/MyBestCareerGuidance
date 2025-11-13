@@ -14,7 +14,7 @@ const rl = readline.createInterface({
 const question = (query) => new Promise(resolve => rl.question(query, resolve));
 
 async function setupSendGrid() {
-    console.log('\n📧 ===== SENDGRID SETUP HELPER =====\n');
+    console.log('\n===== SENDGRID SETUP HELPER =====\n');
     
     // Check current configuration
     const currentApiKey = process.env.SENDGRID_API_KEY;
@@ -22,22 +22,22 @@ async function setupSendGrid() {
     
     console.log('Current Configuration:');
     if (currentApiKey) {
-        console.log(`✅ API Key: ${currentApiKey.substring(0, 10)}... (${currentApiKey.length} chars)`);
+        console.log(`API Key: ${currentApiKey.substring(0, 10)}... (${currentApiKey.length} chars)`);
     } else {
-        console.log('❌ API Key: NOT SET');
+        console.log('API Key: NOT SET');
     }
     
     if (currentFromEmail) {
-        console.log(`✅ From Email: ${currentFromEmail}`);
+        console.log(`From Email: ${currentFromEmail}`);
     } else {
-        console.log('❌ From Email: NOT SET');
+        console.log('From Email: NOT SET');
     }
     
     console.log('\n');
     
     // Step 1: API Key
     if (!currentApiKey) {
-        console.log('📝 Step 1: API Key Setup');
+        console.log('Step 1: API Key Setup');
         console.log('   1. Go to: https://app.sendgrid.com/settings/api_keys');
         console.log('   2. Click "Create API Key"');
         console.log('   3. Name it: "Career Guidance Platform"');
@@ -46,15 +46,15 @@ async function setupSendGrid() {
         
         const apiKey = await question('Enter your SendGrid API Key: ');
         if (apiKey && apiKey.startsWith('SG.')) {
-            console.log('✅ API Key format looks good!');
+            console.log('API Key format looks good');
             console.log(`   Add this to your .env file:\n   SENDGRID_API_KEY=${apiKey}\n`);
         } else {
-            console.log('⚠️  API Key should start with "SG."');
+            console.log('API Key should start with "SG."');
         }
     }
     
     // Step 2: Verify Sender Email
-    console.log('\n📝 Step 2: Verify Sender Email');
+    console.log('\nStep 2: Verify Sender Email');
     console.log('   1. Go to: https://app.sendgrid.com/settings/sender_auth');
     console.log('   2. Click "Verify a Single Sender"');
     console.log('   3. Fill in the form with your email');
@@ -63,7 +63,7 @@ async function setupSendGrid() {
     const fromEmail = await question('Enter the email you verified in SendGrid: ');
     
     if (fromEmail && fromEmail.includes('@') && fromEmail.includes('.')) {
-        console.log(`\n✅ Email format looks good: ${fromEmail}`);
+        console.log(`\nEmail format looks good: ${fromEmail}`);
         console.log('\n📝 Add these lines to your backend/.env file:\n');
         console.log('```env');
         if (!currentApiKey) {
@@ -77,7 +77,7 @@ async function setupSendGrid() {
         console.log('2. Restart your server: npm start');
         console.log('3. Test registration to verify emails work\n');
     } else {
-        console.log('⚠️  Invalid email format');
+        console.log('Invalid email format');
     }
     
     rl.close();

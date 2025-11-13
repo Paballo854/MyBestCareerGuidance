@@ -15,59 +15,26 @@ const JobSearch = () => {
   const loadJobs = async () => {
     try {
       setLoading(true);
-      // REAL API CALL to get jobs from backend
       const response = await studentAPI.getJobs();
-      setJobs(response.jobs || []);
+      if (response.success && response.jobs) {
+        setJobs(response.jobs);
+      } else {
+        setJobs([]);
+      }
     } catch (error) {
       console.error('Error loading jobs:', error);
-      // Fallback to mock data if API fails
-      setJobs([
-        {
-          id: 1,
-          title: 'Junior Software Developer',
-          company: 'Tech Solutions Ltd',
-          location: 'Maseru, Lesotho',
-          type: 'Full-time',
-          salary: 'M8,000 - M12,000',
-          requirements: 'BSc in IT/Computer Science, Knowledge of JavaScript, React, Node.js',
-          description: 'We are looking for a passionate Junior Software Developer to design, develop and maintain software applications.',
-          postedDate: '2025-01-10',
-          deadline: '2025-02-15'
-        },
-        {
-          id: 2,
-          title: 'IT Support Specialist',
-          company: 'Bank of Lesotho',
-          location: 'Maseru, Lesotho',
-          type: 'Full-time',
-          salary: 'M10,000 - M15,000',
-          requirements: 'Diploma in IT, Troubleshooting skills, Customer service experience',
-          description: 'Provide technical support to bank staff and maintain IT infrastructure.',
-          postedDate: '2025-01-12',
-          deadline: '2025-02-20'
-        },
-        {
-          id: 3,
-          title: 'Data Analyst Intern',
-          company: 'Lesotho Stats',
-          location: 'Maseru, Lesotho',
-          type: 'Internship',
-          salary: 'M4,000 - M6,000',
-          requirements: 'Currently pursuing degree in IT/Statistics, Excel skills, Analytical thinking',
-          description: '6-month internship opportunity for data analysis and reporting.',
-          postedDate: '2025-01-08',
-          deadline: '2025-01-30'
-        }
-      ]);
+      alert('Failed to load jobs. Please try again.');
+      setJobs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredJobs = jobs.filter(job =>
-    job.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (filterCompany === '' || job.company === filterCompany)
-  );
+  const filteredJobs = jobs.filter(job => {
+    const titleMatch = job.title?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const companyMatch = filterCompany === '' || job.companyName === filterCompany || job.company === filterCompany;
+    return titleMatch && companyMatch;
+  });
 
   const handleApply = async (jobId) => {
     try {
@@ -83,7 +50,7 @@ const JobSearch = () => {
     }
   };
 
-  const companies = [...new Set(jobs.map(job => job.company))];
+  const companies = [...new Set(jobs.map(job => job.companyName || job.company).filter(Boolean))];
 
   if (loading) {
     return (
@@ -157,16 +124,16 @@ const JobSearch = () => {
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                   <div>
-                    <strong>Company:</strong> {job.company}
+                    <strong>Company:</strong> {job.companyName || job.company}
                   </div>
                   <div>
                     <strong>Location:</strong> {job.location}
                   </div>
                   <div>
-                    <strong>Type:</strong> {job.type}
+                    <strong>Type:</strong> {job.jobType || job.type}
                   </div>
                   <div>
-                    <strong>Salary:</strong> {job.salary}
+                    <strong>Salary:</strong> {job.salary || 'Not specified'}
                   </div>
                 </div>
                 <p style={{ color: '#6b7280', marginBottom: '8px' }}>
@@ -177,10 +144,10 @@ const JobSearch = () => {
                 </p>
                 <div style={{ display: 'flex', gap: '20px', color: '#6b7280', fontSize: '14px' }}>
                   <div>
-                    <strong>Posted:</strong> {job.postedDate}
+                    <strong>Posted:</strong> {job.postedAt ? new Date(job.postedAt).toLocaleDateString() : (job.postedDate || 'N/A')}
                   </div>
                   <div>
-                    <strong>Deadline:</strong> {job.deadline}
+                    <strong>Deadline:</strong> {job.deadline ? new Date(job.deadline).toLocaleDateString() : 'Not specified'}
                   </div>
                 </div>
               </div>

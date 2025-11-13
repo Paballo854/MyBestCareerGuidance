@@ -1,4 +1,4 @@
-﻿const User = require('../models/User');
+const User = require('../models/User');
 const { validateEmail } = require('../utils/helpers');
 const { generateVerificationCode, sendVerificationEmail } = require('../utils/emailService');
 
@@ -28,6 +28,20 @@ const register = async (req, res) => {
             });
         }
 
+        if (/\d/.test(firstName)) {
+            return res.status(400).json({
+                success: false,
+                message: 'First name cannot contain numbers'
+            });
+        }
+
+        if (/\d/.test(lastName)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Last name cannot contain numbers'
+            });
+        }
+
         // Allow admin role for development
         const validRoles = ['student', 'institute', 'company', 'admin'];
         if (!validRoles.includes(role)) {
@@ -46,38 +60,33 @@ const register = async (req, res) => {
             });
         }
 
-        // Verify that email was pre-verified before registration
         const { db } = require('../config/firebase');
         const tempVerificationRef = db.collection('tempEmailVerifications').doc(email);
         const tempVerificationDoc = await tempVerificationRef.get();
-
         if (!tempVerificationDoc.exists || !tempVerificationDoc.data().verified) {
             return res.status(400).json({
                 success: false,
-                message: 'Please verify your email first before registering.'
+                message: 'Email not verified. Please verify your email before registering.'
             });
         }
 
-        // Create user (already verified via pre-registration)
         const user = new User({
             email,
             password,
             role,
             firstName,
             lastName,
-            isVerified: true, // Pre-verified, so mark as verified
+            isVerified: true,
             verificationCode: null,
             verificationCodeExpiry: null
         });
 
         const result = await user.save();
 
-        // Delete temporary verification record
-        await tempVerificationRef.delete();
-
         // Generate token for immediate login
         const { generateToken } = require('../utils/helpers');
         const token = generateToken({
+            id: result.user.email, // Use email as ID since that's the document ID in Firestore
             email: result.user.email,
             role: result.user.role,
             firstName: firstName,
@@ -108,33 +117,33 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
     try {
-        console.log('🔍 [DEBUG] Login request received at:', new Date().toISOString());
-        console.log('📨 [DEBUG] Request body:', JSON.stringify(req.body, null, 2));
+        console.log('[DEBUG] Login request received at:', new Date().toISOString());
+        console.log('[DEBUG] Request body:', JSON.stringify(req.body, null, 2));
         
         const { email, password } = req.body;
 
-        console.log('🔍 [DEBUG] Checking if email and password exist...');
+        console.log('[DEBUG] Checking if email and password exist...');
         if (!email || !password) {
-            console.log('❌ [DEBUG] Missing email or password');
+            console.log('[DEBUG] Missing email or password');
             return res.status(400).json({
                 success: false,
                 message: 'Email and password are required'
             });
         }
 
-        console.log('🔍 [DEBUG] Calling User.verifyCredentials...');
+        console.log('[DEBUG] Calling User.verifyCredentials...');
         const result = await User.verifyCredentials(email, password);
-        console.log('✅ [DEBUG] User.verifyCredentials completed:', JSON.stringify(result, null, 2));
+        console.log('[DEBUG] User.verifyCredentials completed:', JSON.stringify(result, null, 2));
 
         if (!result.success) {
-            console.log('❌ [DEBUG] Credential verification failed:', result.message);
+            console.log('[DEBUG] Credential verification failed:', result.message);
             return res.status(401).json({
                 success: false,
                 message: result.message
             });
         }
 
-        console.log('✅ [DEBUG] Login successful, sending response...');
+        console.log('[DEBUG] Login successful, sending response...');
         res.status(200).json({
             success: true,
             message: 'Login successful',
@@ -143,8 +152,8 @@ const login = async (req, res) => {
         });
 
     } catch (error) {
-        console.log('💥 [DEBUG] Login error:', error.message);
-        console.log('💥 [DEBUG] Full error:', error);
+        console.log('[DEBUG] Login error:', error.message);
+        console.log('[DEBUG] Full error:', error);
         res.status(500).json({
             success: false,
             message: 'Login failed',
@@ -274,17 +283,17 @@ const checkEmailAndSendCode = async (req, res) => {
         if (process.env.NODE_ENV === 'production' && !isLocalhost) {
             // Real production environment
             if (!emailResult.success) {
-                console.error(`⚠️  Email sending failed in production for ${email}`);
+                console.error(`Email sending failed in production for ${email}`);
                 console.error('   Code is stored in database. User may need manual assistance.');
             }
         } else {
             // Development/localhost mode - provide helpful feedback
             if (emailResult.method === 'sendgrid') {
-                console.log(`✅ Verification code sent successfully to ${email} via SendGrid`);
+                console.log(`Verification code sent successfully to ${email} via SendGrid`);
             } else if (emailResult.method === 'console') {
-                console.log(`ℹ️  Development/localhost mode: Verification code shown in console`);
+                console.log(`Development/localhost mode: Verification code shown in console`);
             } else if (emailResult.method === 'fallback') {
-                console.log(`⚠️  Email sending failed. Code available in console: ${emailResult.code}`);
+                console.log(`Email sending failed. Code available in console: ${emailResult.code}`);
             }
         }
 
@@ -405,9 +414,9 @@ const resendVerificationCode = async (req, res) => {
         if (user) {
             try {
                 await sendVerificationEmail(email, verificationCode, user.firstName);
-                console.log(`✅ Verification email resent to ${email}`);
+                console.log(`Verification email resent to ${email}`);
             } catch (emailError) {
-                console.error('❌ Failed to send verification email:', emailError);
+                console.error('Failed to send verification email:', emailError);
             }
         }
 

@@ -12,13 +12,25 @@ const TranscriptUpload = () => {
 
   const loadDocuments = async () => {
     try {
-      // In a real app, you would call: studentAPI.getDocuments()
-      // For now, we'll simulate loading
-      setTimeout(() => {
-        setLoading(false);
-      }, 500);
+      setLoading(true);
+      // Call the real API to get documents
+      const response = await studentAPI.getDocuments();
+      if (response.success && response.documents) {
+        setDocuments(response.documents.map(doc => ({
+          id: doc.id,
+          name: doc.fileName || doc.name,
+          type: doc.documentType || doc.type || 'Document',
+          uploadDate: doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString() : 'N/A',
+          status: doc.status || 'Pending',
+          size: doc.size || 'N/A'
+        })));
+      } else {
+        setDocuments([]);
+      }
     } catch (error) {
       console.error('Error loading documents:', error);
+      setDocuments([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -49,24 +61,18 @@ const TranscriptUpload = () => {
       formData.append('uploadDate', new Date().toISOString());
 
       // REAL API CALL to your backend
-      const response = await studentAPI.uploadTranscript(formData);
-      
-      // Add the new document to the list
-      const newDocument = {
-        id: response.documentId || documents.length + 1,
-        name: file.name,
-        type: 'Academic Transcript',
-        uploadDate: new Date().toISOString().split('T')[0],
-        status: 'Pending Verification',
-        size: (file.size / (1024 * 1024)).toFixed(2) + ' MB'
-      };
+      const response = await studentAPI.uploadTranscripts(formData);
 
-      setDocuments([newDocument, ...documents]);
-      alert('Document uploaded successfully! It will be verified soon.');
-      
+      if (response.success) {
+        // Reload documents after successful upload
+        await loadDocuments();
+        alert('Document uploaded successfully! It will be verified soon.');
+      } else {
+        alert(response.message || 'Failed to upload document. Please try again.');
+      }
     } catch (error) {
       console.error('Error uploading document:', error);
-      alert('Failed to upload document. Please try again.');
+      alert(error.response?.data?.message || 'Failed to upload document. Please try again.');
     } finally {
       setUploading(false);
       event.target.value = ''; // Reset file input
@@ -76,12 +82,17 @@ const TranscriptUpload = () => {
   const handleDeleteDocument = async (documentId) => {
     if (window.confirm('Are you sure you want to delete this document?')) {
       try {
-        await studentAPI.deleteDocument(documentId);
-        setDocuments(documents.filter(doc => doc.id !== documentId));
-        alert('Document deleted successfully!');
+        const response = await studentAPI.deleteDocument(documentId);
+        if (response.success) {
+          // Reload documents after successful deletion
+          await loadDocuments();
+          alert('Document deleted successfully!');
+        } else {
+          alert(response.message || 'Failed to delete document. Please try again.');
+        }
       } catch (error) {
         console.error('Error deleting document:', error);
-        alert('Failed to delete document. Please try again.');
+        alert(error.response?.data?.message || 'Failed to delete document. Please try again.');
       }
     }
   };

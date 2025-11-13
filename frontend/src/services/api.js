@@ -137,7 +137,27 @@ export const studentAPI = {
   },
 
   applyForJob: async (jobId, applicationData) => {
-    const response = await api.post('/student/jobs/' + jobId + '/apply', applicationData);
+    const response = await api.post('/student/apply-job', { jobId, ...applicationData });
+    return response.data;
+  },
+
+  getProfile: async () => {
+    const response = await api.get('/student/profile');
+    return response.data;
+  },
+
+  updateProfile: async (profileData) => {
+    const response = await api.put('/student/profile', profileData);
+    return response.data;
+  },
+
+  getDocuments: async () => {
+    const response = await api.get('/student/documents');
+    return response.data;
+  },
+
+  deleteDocument: async (documentId) => {
+    const response = await api.delete('/student/documents/' + documentId);
     return response.data;
   },
 };
@@ -159,13 +179,63 @@ export const instituteAPI = {
     return response.data;
   },
 
+  updateCourse: async (courseId, courseData) => {
+    const response = await api.put(`/institute/courses/${courseId}`, courseData);
+    return response.data;
+  },
+
+  deleteCourse: async (courseId) => {
+    const response = await api.delete(`/institute/courses/${courseId}`);
+    return response.data;
+  },
+
   getApplications: async () => {
     const response = await api.get('/institute/applications');
     return response.data;
   },
 
   updateApplicationStatus: async (applicationId, status) => {
-    const response = await api.put('/institute/applications/' + applicationId + '/status', { status });
+    const response = await api.put('/institute/applications/status', { applicationId, status });
+    return response.data;
+  },
+
+  getFaculties: async () => {
+    const response = await api.get('/institute/faculties');
+    return response.data;
+  },
+
+  addFaculty: async (facultyData) => {
+    const response = await api.post('/institute/faculties', facultyData);
+    return response.data;
+  },
+
+  updateFaculty: async (facultyData) => {
+    const response = await api.put('/institute/faculties', facultyData);
+    return response.data;
+  },
+
+  deleteFaculty: async (facultyId) => {
+    const response = await api.delete('/institute/faculties', { data: { facultyId } });
+    return response.data;
+  },
+
+  getProfile: async () => {
+    const response = await api.get('/institute/profile');
+    return response.data;
+  },
+
+  updateProfile: async (profileData) => {
+    const response = await api.put('/institute/profile', profileData);
+    return response.data;
+  },
+
+  getAdmissionResults: async () => {
+    const response = await api.get('/institute/admissions');
+    return response.data;
+  },
+
+  getAnalytics: async () => {
+    const response = await api.get('/institute/analytics');
     return response.data;
   },
 };
@@ -272,6 +342,27 @@ export const adminAPI = {
 
   deleteFaculty: async (facultyId) => {
     const response = await api.delete('/admin/faculties/' + facultyId);
+    return response.data;
+  },
+
+  // Courses under faculty/institution
+  getCoursesByFaculty: async (facultyId) => {
+    const response = await api.get('/admin/faculties/' + facultyId + '/courses');
+    return response.data;
+  },
+
+  addCourseToFaculty: async (facultyId, courseData) => {
+    const response = await api.post('/admin/faculties/' + facultyId + '/courses', courseData);
+    return response.data;
+  },
+
+  updateCourse: async (courseId, updateData) => {
+    const response = await api.put('/admin/courses/' + courseId, updateData);
+    return response.data;
+  },
+
+  deleteCourse: async (courseId) => {
+    const response = await api.delete('/admin/courses/' + courseId);
     return response.data;
   },
 

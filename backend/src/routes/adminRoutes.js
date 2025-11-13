@@ -304,20 +304,27 @@ router.put('/users/:id/status', authMiddleware, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Access denied' });
         }
 
-        const userId = req.params.id;
+        const userId = req.params.id; // This is the email (document ID)
         const { status } = req.body;
 
-        await db.collection('users').doc(userId).update({
+        // Check if user exists
+        const userDoc = await db.collection('users').doc(userId).get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        await db.collection('users').doc(userId).set({
             status,
             updatedAt: new Date().toISOString()
-        });
+        }, { merge: true });
 
         res.json({
             success: true,
             message: 'User status updated successfully'
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to update user status' });
+        console.error('Error updating user status:', error);
+        res.status(500).json({ success: false, message: 'Failed to update user status', error: error.message });
     }
 });
 
@@ -340,16 +347,43 @@ router.get('/reports', authMiddleware, async (req, res) => {
             institutionsSnapshot,
             coursesSnapshot,
             applicationsSnapshot,
-            companiesSnapshot
+            companiesSnapshot,
+            jobPostingsSnapshot
         ] = await Promise.all([
             db.collection('users').get(),
             db.collection('institutions').get(),
             db.collection('courses').get(),
             db.collection('applications').get(),
-            db.collection('companies').get()
+            db.collection('companies').get(),
+            db.collection('jobPostings').get()
         ]);
 
+        // Count users by role
+        const userCounts = { student: 0, institute: 0, company: 0, admin: 0 };
+        usersSnapshot.forEach(doc => {
+            const user = doc.data();
+            if (user.role) {
+                userCounts[user.role] = (userCounts[user.role] || 0) + 1;
+            }
+        });
+
+        // Count applications by status
+        const applicationsByStatus = { pending: 0, approved: 0, rejected: 0, waitlisted: 0, cancelled: 0 };
+        applicationsSnapshot.forEach(doc => {
+            const app = doc.data();
+            const status = app.status || 'pending';
+            applicationsByStatus[status] = (applicationsByStatus[status] || 0) + 1;
+        });
+
         const reports = {
+            totalUsers: usersSnapshot.size,
+            userCounts,
+            totalInstitutions: institutionsSnapshot.size,
+            totalCourses: coursesSnapshot.size,
+            totalApplications: applicationsSnapshot.size,
+            applicationsByStatus,
+            totalCompanies: companiesSnapshot.size,
+            totalJobs: jobPostingsSnapshot.size,
             userGrowth: calculateMonthlyGrowth(usersSnapshot),
             applicationTrends: calculateApplicationTrends(applicationsSnapshot),
             institutionPerformance: calculateInstitutionPerformance(institutionsSnapshot, applicationsSnapshot),
@@ -358,7 +392,8 @@ router.get('/reports', authMiddleware, async (req, res) => {
 
         res.json({ success: true, reports });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to generate reports' });
+        console.error('Error generating reports:', error);
+        res.status(500).json({ success: false, message: 'Failed to generate reports', error: error.message });
     }
 });
 
@@ -645,16 +680,22 @@ router.get('/admissions', authMiddleware, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Access denied' });
         }
 
-        const snapshot = await db.collection('applications')
-            .orderBy('applicationDate', 'desc')
-            .get();
+        const snapshot = await db.collection('applications').get();
 
         const admissions = [];
         snapshot.forEach(doc => admissions.push({ id: doc.id, ...doc.data() }));
 
+        // Sort by appliedAt date in memory (newest first)
+        admissions.sort((a, b) => {
+            const dateA = a.appliedAt ? (a.appliedAt.toDate ? a.appliedAt.toDate() : new Date(a.appliedAt)) : new Date(0);
+            const dateB = b.appliedAt ? (b.appliedAt.toDate ? b.appliedAt.toDate() : new Date(b.appliedAt)) : new Date(0);
+            return dateB - dateA;
+        });
+
         res.json({ success: true, admissions });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to fetch admissions' });
+        console.error('Error fetching admissions:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch admissions', error: error.message });
     }
 });
 

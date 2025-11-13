@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -170,7 +170,7 @@ const Login = () => {
                                 alignItems: 'center',
                                 gap: '4px'
                             }}>
-                                ⚠️ {errors.email}
+                                {errors.email}
                             </div>
                         )}
                     </div>
@@ -233,7 +233,7 @@ const Login = () => {
                                 alignItems: 'center',
                                 gap: '4px'
                             }}>
-                                ⚠️ {errors.password}
+                                {errors.password}
                             </div>
                         )}
                     </div>
@@ -272,10 +272,10 @@ const Login = () => {
                                 e.target.style.background = 'white';
                             }}
                         >
-                            <option value="student">🎓 Student</option>
-                            <option value="institute">🏫 Institution</option>
-                            <option value="company">💼 Company</option>
-                            <option value="admin">⚙️ Admin</option>
+                            <option value="student">Student</option>
+                            <option value="institute">Institution</option>
+                            <option value="company">Company</option>
+                            <option value="admin">Admin</option>
                         </select>
                     </div>
 
@@ -369,7 +369,7 @@ const Login = () => {
                         margin: 0,
                         fontWeight: '500'
                     }}>
-                        💡 Demo: Use any email/password to test the login
+                        Demo: Use any email/password to test the login
                     </p>
                 </div>
             </div>

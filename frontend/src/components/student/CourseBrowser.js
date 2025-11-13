@@ -18,37 +18,25 @@ const CourseBrowser = () => {
       
       // Load courses from backend
       const coursesResponse = await studentAPI.getCourses();
-      setCourses(coursesResponse.courses || []);
+      if (coursesResponse.success && coursesResponse.courses) {
+        setCourses(coursesResponse.courses);
+      } else {
+        setCourses([]);
+      }
       
       // Load institutions from backend
       const institutionsResponse = await studentAPI.getInstitutions();
-      setInstitutions(institutionsResponse.institutions || []);
+      if (institutionsResponse.success && institutionsResponse.institutions) {
+        setInstitutions(institutionsResponse.institutions);
+      } else {
+        setInstitutions([]);
+      }
       
     } catch (error) {
       console.error('Error loading data:', error);
       alert('Failed to load courses. Please try again.');
-      
-      // Fallback to mock data if API fails
-      setCourses([
-        {
-          id: '1',
-          name: 'BSc in Information Technology',
-          institutionName: 'Limkokwing University',
-          duration: '4 years',
-          requirements: 'High School Diploma',
-          availableSeats: 50,
-          institutionId: 'limkokwing'
-        },
-        {
-          id: '2', 
-          name: 'Diploma in Business IT',
-          institutionName: 'National University of Lesotho',
-          duration: '2 years',
-          requirements: 'High School Certificate',
-          availableSeats: 30,
-          institutionId: 'nul'
-        }
-      ]);
+      setCourses([]);
+      setInstitutions([]);
     } finally {
       setLoading(false);
     }
@@ -139,6 +127,49 @@ const CourseBrowser = () => {
                   <p style={{ color: '#6b7280', marginBottom: '5px' }}>
                     <strong>Requirements:</strong> {course.requirements}
                   </p>
+                  {course.requiredSubjects && course.requiredSubjects.length > 0 && (
+                    <div style={{ marginBottom: '10px' }}>
+                      <strong style={{ color: '#6b7280' }}>Required Subjects: </strong>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
+                        {course.requiredSubjects.map((subject, idx) => (
+                          <span key={idx} style={{
+                            background: '#3b82f6',
+                            color: 'white',
+                            padding: '4px 10px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '500'
+                          }}>
+                            {subject}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {course.minimumGrade && (
+                    <p style={{ color: '#6b7280', marginBottom: '5px' }}>
+                      <strong>Minimum Grade:</strong> {course.minimumGrade}%
+                    </p>
+                  )}
+                  {course.additionalRequirements && course.additionalRequirements.length > 0 && (
+                    <div style={{ marginBottom: '10px' }}>
+                      <strong style={{ color: '#6b7280' }}>Additional Requirements: </strong>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
+                        {course.additionalRequirements.map((req, idx) => (
+                          <span key={idx} style={{
+                            background: '#10b981',
+                            color: 'white',
+                            padding: '4px 10px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '500'
+                          }}>
+                            {req}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <p style={{ color: '#6b7280', marginBottom: '5px' }}>
                     <strong>Available Seats:</strong> {course.availableSeats || 'Not specified'}
                   </p>

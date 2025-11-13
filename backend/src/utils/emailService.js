@@ -1,4 +1,4 @@
-﻿const sgMail = require('@sendgrid/mail');
+const sgMail = require('@sendgrid/mail');
 
 // Configuration
 const MAX_RETRIES = 3;
@@ -46,7 +46,7 @@ const retryWithBackoff = async (fn, maxRetries = MAX_RETRIES, delay = RETRY_DELA
             
             if (attempt < maxRetries) {
                 const backoffDelay = delay * Math.pow(2, attempt - 1);
-                console.log(`⚠️  Email send attempt ${attempt} failed. Retrying in ${backoffDelay}ms...`);
+                console.log(`Email send attempt ${attempt} failed. Retrying in ${backoffDelay}ms...`);
                 await sleep(backoffDelay);
             }
         }
@@ -115,12 +115,12 @@ const sendVerificationEmail = async (email, verificationCode, firstName = 'User'
         // In development/localhost without SendGrid, use console mode
         if (!config.hasApiKey) {
             if (IS_DEVELOPMENT || isLocalhost) {
-                console.log('\n📧 ===== VERIFICATION EMAIL (CONSOLE MODE) =====');
-                console.log(`📧 TO: ${email}`);
-                console.log(`🔐 CODE: ${verificationCode}`);
-                console.log(`📝 Purpose: ${isPreRegistration ? 'Pre-Registration' : 'Account Verification'}`);
-                console.log('💡 To enable email sending, configure SendGrid in .env');
-                console.log('💡 Running in development/localhost mode - code shown in console\n');
+                console.log('\n===== VERIFICATION EMAIL (CONSOLE MODE) =====');
+                console.log(`TO: ${email}`);
+                console.log(`CODE: ${verificationCode}`);
+                console.log(`Purpose: ${isPreRegistration ? 'Pre-Registration' : 'Account Verification'}`);
+                console.log('To enable email sending, configure SendGrid in .env');
+                console.log('Running in development/localhost mode - code shown in console\n');
                 
                 logEmailAttempt(email, verificationCode, 'console', true);
                 return { 
@@ -184,15 +184,15 @@ const sendVerificationEmail = async (email, verificationCode, firstName = 'User'
 
         const duration = Date.now() - startTime;
         
-        console.log('✅ EMAIL SENT SUCCESSFULLY VIA SENDGRID!');
-        console.log(`📧 Email delivered to: ${email}`);
-        console.log(`📨 Message ID: ${result[0]?.headers?.['x-message-id'] || 'N/A'}`);
-        console.log(`⏱️  Delivery time: ${duration}ms`);
+        console.log('EMAIL SENT SUCCESSFULLY VIA SENDGRID');
+        console.log(`Email delivered to: ${email}`);
+        console.log(`Message ID: ${result[0]?.headers?.['x-message-id'] || 'N/A'}`);
+        console.log(`Delivery time: ${duration}ms`);
         
         if (IS_PRODUCTION && !isLocalhost) {
-            console.log('📱 User should check their inbox (and spam folder if not found)');
+            console.log('User should check their inbox (and spam folder if not found)');
         } else {
-            console.log('📱 Email sent! (Running in development/localhost mode)');
+            console.log('Email sent (running in development/localhost mode)');
         }
         console.log('');
 
@@ -221,7 +221,7 @@ const sendVerificationEmail = async (email, verificationCode, firstName = 'User'
             )) {
                 const currentFromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@careerguidance.ls';
                 
-                console.error('\n🔴 CRITICAL: Sender email not verified in SendGrid!');
+                console.error('\nCRITICAL: Sender email not verified in SendGrid');
                 console.error('   Email:', currentFromEmail);
                 console.error('   Status Code:', error.code);
                 console.error('\n   To fix this:');
@@ -235,25 +235,25 @@ const sendVerificationEmail = async (email, verificationCode, firstName = 'User'
             
             // Rate limit error
             if (error.code === 429) {
-                console.error('⚠️  SendGrid rate limit exceeded. Please wait before sending more emails.');
+                console.error('SendGrid rate limit exceeded. Please wait before sending more emails.');
             }
             
             // Invalid API key
             if (error.code === 401) {
-                console.error('🔴 Invalid SendGrid API key. Please check SENDGRID_API_KEY in .env');
+                console.error('Invalid SendGrid API key. Please check SENDGRID_API_KEY in .env');
             }
         }
 
         // Handle errors based on environment
         if (IS_DEVELOPMENT || isLocalhost) {
             // On localhost/development: Always show code in console as fallback
-            console.log(`\n📧 ===== EMAIL SENDING FAILED - CONSOLE MODE =====`);
-            console.log(`📧 TO: ${email}`);
-            console.log(`🔐 VERIFICATION CODE: ${verificationCode}`);
-            console.log(`📝 Purpose: ${isPreRegistration ? 'Pre-Registration' : 'Account Verification'}`);
-            console.log('💡 Running in development/localhost mode');
-            console.log('💡 Code is valid and stored in database');
-            console.log('💡 User can use the code shown above to continue registration\n');
+            console.log(`\n===== EMAIL SENDING FAILED - CONSOLE MODE =====`);
+            console.log(`TO: ${email}`);
+            console.log(`VERIFICATION CODE: ${verificationCode}`);
+            console.log(`Purpose: ${isPreRegistration ? 'Pre-Registration' : 'Account Verification'}`);
+            console.log('Running in development/localhost mode');
+            console.log('Code is valid and stored in database');
+            console.log('User can use the code shown above to continue registration\n');
             
             // Return success with code for development
             return { 
@@ -265,7 +265,7 @@ const sendVerificationEmail = async (email, verificationCode, firstName = 'User'
             };
         } else {
             // In real production (not localhost): Handle differently
-            console.error('❌ Email sending failed in production. Consider implementing email queue.');
+            console.error('Email sending failed in production. Consider implementing email queue.');
             // In a real application, you would:
             // 1. Store failed email in a queue (Redis, database, etc.)
             // 2. Have a background worker retry sending
@@ -317,7 +317,7 @@ const getEmailTemplate = (greeting, message, code, action) => {
                     <!-- Warning -->
                     <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
                         <p style="color: #92400e; margin: 0; font-weight: bold; font-size: 14px;">
-                            ⚠️ This code will expire in 10 minutes.
+                            This code will expire in 10 minutes.
                         </p>
                     </div>
                     

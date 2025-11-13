@@ -1,20 +1,10 @@
-﻿import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
   const { register, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
-
-  // Step management
-  const [step, setStep] = useState(1); // 1: Email, 2: Verify Code, 3: Registration Form
-  const [verifiedEmail, setVerifiedEmail] = useState('');
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [emailError, setEmailError] = useState('');
-  const [verifyError, setVerifyError] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -26,642 +16,263 @@ const Register = () => {
     phone: ''
   });
 
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+  const [formErrors, setFormErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
 
-  // Step 1: Check email and send code
-  const handleEmailSubmit = async (e) => {
-    e.preventDefault();
-    setEmailLoading(true);
-    setEmailError('');
-    clearError();
-
-    if (!formData.email) {
-      setEmailError('Email is required');
-      setEmailLoading(false);
-      return;
+  const validate = () => {
+    const errors = {};
+    if (!formData.firstName.trim()) {
+      errors.firstName = 'First name is required';
+    } else if (/\d/.test(formData.firstName)) {
+      errors.firstName = 'First name cannot contain numbers';
     }
-
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      setEmailError('Invalid email format');
-      setEmailLoading(false);
-      return;
+    if (!formData.lastName.trim()) {
+      errors.lastName = 'Last name is required';
+    } else if (/\d/.test(formData.lastName)) {
+      errors.lastName = 'Last name cannot contain numbers';
     }
-
-    try {
-      const result = await authAPI.checkEmailAndSendCode(formData.email);
-      
-      if (result.success) {
-        setVerifiedEmail(formData.email);
-        setStep(2);
-      } else {
-        setEmailError(result.message || 'Failed to send verification code');
-      }
-    } catch (err) {
-      setEmailError(err.response?.data?.message || 'Failed to check email. Please try again.');
-    } finally {
-      setEmailLoading(false);
+    if (!formData.email.trim()) {
+      errors.email = 'Email address is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Invalid email format';
     }
-  };
-
-  // Step 2: Verify code
-  const handleVerifyCode = async (e) => {
-    e.preventDefault();
-    setVerifyLoading(true);
-    setVerifyError('');
-
-    if (!verificationCode || verificationCode.length !== 6) {
-      setVerifyError('Please enter a valid 6-digit code');
-      setVerifyLoading(false);
-      return;
+    if (!formData.password) {
+      errors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
     }
-
-    try {
-      const result = await authAPI.verifyPreRegistrationEmail(verifiedEmail, verificationCode);
-      
-      if (result.success) {
-        setStep(3); // Proceed to registration form
-      } else {
-        setVerifyError(result.message || 'Invalid verification code');
-      }
-    } catch (err) {
-      setVerifyError(err.response?.data?.message || 'Verification failed. Please try again.');
-    } finally {
-      setVerifyLoading(false);
+    if (!formData.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
     }
-  };
-
-  // Resend verification code
-  const handleResendCode = async () => {
-    setVerifyError('');
-    try {
-      const result = await authAPI.checkEmailAndSendCode(verifiedEmail);
-      if (result.success) {
-        setVerifyError(''); // Clear any errors
-        alert('Verification code resent! Please check your email.');
-      }
-    } catch (err) {
-      setVerifyError('Failed to resend code. Please try again.');
+    if (formData.phone && !/^\+?[0-9\s\-()]{8,}$/.test(formData.phone)) {
+      errors.phone = 'Enter a valid phone number';
     }
-  };
-
-  // Validation functions
-  const validateName = (name, fieldName) => {
-    const nameRegex = /^[A-Za-z\s]+$/;
-
-    if (!name) {
-      return fieldName + ' is required';
-    }
-
-    if (!nameRegex.test(name)) {
-      return fieldName + ' should not contain numbers or special characters';
-    }
-
-    if (name.length < 2) {
-      return fieldName + ' should be at least 2 characters long';
-    }
-
-    return '';
-  };
-
-  const validateField = (name, value) => {
-    switch (name) {
-      case 'firstName':
-        return validateName(value, 'First name');
-      case 'lastName':
-        return validateName(value, 'Last name');
-      case 'email':
-        if (!value) return 'Email is required';
-        if (!/\S+@\S+\.\S+/.test(value)) return 'Email is invalid';
-        return '';
-      case 'password':
-        if (!value) return 'Password is required';
-        if (value.length < 6) return 'Password must be at least 6 characters';
-        return '';
-      case 'confirmPassword':
-        if (!value) return 'Please confirm your password';
-        if (value !== formData.password) return 'Passwords do not match';
-        return '';
-      default:
-        return '';
-    }
+    return errors;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormErrors((prev) => ({ ...prev, [name]: '' }));
+    setSubmitError('');
+    clearError();
+  };
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    if (touched[name]) {
-      const error = validateField(name, value);
-      setErrors(prev => ({
-        ...prev,
-        [name]: error
-      }));
+  const getDashboardPath = (role) => {
+    switch (role) {
+      case 'student':
+        return '/student/dashboard';
+      case 'institute':
+        return '/institute/dashboard';
+      case 'company':
+        return '/company/dashboard';
+      case 'admin':
+        return '/admin/dashboard';
+      default:
+        return '/dashboard';
     }
   };
 
-  const handleBlur = (e) => {
-    const { name, value } = e.target;
-    
-    setTouched(prev => ({
-      ...prev,
-      [name]: true
-    }));
-
-    const error = validateField(name, value);
-    setErrors(prev => ({
-      ...prev,
-      [name]: error
-    }));
-  };
-
-  // Step 3: Complete registration
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const errors = validate();
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
 
-    const allTouched = Object.keys(formData).reduce((acc, key) => {
-      acc[key] = true;
-      return acc;
-    }, {});
-    setTouched(allTouched);
-
-    const newErrors = {};
-    Object.keys(formData).forEach(key => {
-      if (key !== 'phone') {
-        const error = validateField(key, formData[key]);
-        if (error) newErrors[key] = error;
-      }
-    });
-
-    setErrors(newErrors);
-
-    const hasErrors = Object.keys(newErrors).length > 0;
-
-    if (!hasErrors) {
-      // Ensure email matches verified email
-      const userData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: verifiedEmail, // Use verified email
-        password: formData.password,
-        role: formData.role,
-        phone: formData.phone
-      };
-
-      const result = await register(userData);
-
+    try {
+      const result = await register(formData);
       if (result.success) {
-        // Store token and user
-        if (result.token) {
-          localStorage.setItem('token', result.token);
-        }
-        if (result.user) {
-          localStorage.setItem('user', JSON.stringify(result.user));
-        }
-        
-        // Redirect to dashboard
-        const dashboardPath = '/' + result.user.role + '/dashboard';
-        navigate(dashboardPath);
+        navigate(getDashboardPath(result.user.role));
+      } else if (result.error) {
+        setSubmitError(result.error);
       }
+    } catch (err) {
+      setSubmitError(err.message || 'Registration failed. Please try again.');
     }
   };
 
-  const handleNameKeyPress = (e) => {
-    const charCode = e.charCode;
-    if (!((charCode >= 65 && charCode <= 90) || (charCode >= 97 && charCode <= 122) || charCode === 32)) {
-      e.preventDefault();
-    }
-  };
+  const hasErrors = Object.values(formErrors).some(Boolean) || Boolean(submitError);
 
-  const getInputStyle = (fieldName) => ({
-    width: '100%',
-    padding: '14px 16px',
-    border: errors[fieldName] ? '2px solid #ef4444' : '2px solid #e5e7eb',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    transition: 'all 0.3s ease',
-    outline: 'none',
-    background: 'white'
-  });
-
-  const containerStyle = {
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif",
-    padding: '20px'
-  };
-
-  const cardStyle = {
-    width: '100%',
-    maxWidth: '500px',
-    background: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(10px)',
-    padding: '40px 35px',
-    borderRadius: '20px',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
-    border: '1px solid rgba(255, 255, 255, 0.2)'
-  };
-
-  // Step 1: Email Entry
-  const renderEmailStep = () => (
-    <>
-      <div style={{ textAlign: 'center', marginBottom: '35px' }}>
-        <h1 style={{
-          fontSize: '2.2rem',
-          fontWeight: 'bold',
-          marginBottom: '8px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
-        }}>
-          Verify Your Email
-        </h1>
-        <p style={{
-          color: '#6b7280',
-          fontSize: '1rem',
-          margin: 0
-        }}>
-          Enter your email address to get started
-        </p>
-      </div>
-
-      {emailError && (
-        <div style={{
-          background: '#fee2e2',
-          color: '#dc2626',
-          padding: '12px 16px',
-          borderRadius: '10px',
-          marginBottom: '20px',
-          border: '1px solid #fecaca',
-          fontSize: '0.9rem'
-        }}>
-          {emailError}
-        </div>
-      )}
-
-      <form onSubmit={handleEmailSubmit}>
-        <div style={{ marginBottom: '25px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: '600',
-            color: '#374151',
-            fontSize: '0.95rem'
-          }}>
-            Email Address *
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            style={getInputStyle('email')}
-            placeholder="Enter your email address"
-            disabled={emailLoading}
-          />
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%)',
+        padding: '40px 20px'
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '520px',
+          background: 'white',
+          borderRadius: '24px',
+          padding: '40px',
+          boxShadow: '0 20px 40px rgba(15, 23, 42, 0.12)'
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          
+          <h1 style={{ fontSize: '1.9rem', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>
+            Create Your Account
+          </h1>
+          <p style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.6 }}>
+            Sign up to explore courses, manage applications, and grow your career with confidence.
+          </p>
         </div>
 
-        <button
-          type="submit"
-          disabled={emailLoading}
-          style={{
-            width: '100%',
-            background: emailLoading 
-              ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)' 
-              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            padding: '16px',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: '1.1rem',
-            fontWeight: '600',
-            cursor: emailLoading ? 'not-allowed' : 'pointer',
-            transition: 'all 0.3s ease',
-            opacity: emailLoading ? 0.8 : 1
-          }}
-        >
-          {emailLoading ? 'Checking...' : 'Send Verification Code'}
-        </button>
-      </form>
-    </>
-  );
-
-  // Step 2: Verification Code
-  const renderVerifyStep = () => (
-    <>
-      <div style={{ textAlign: 'center', marginBottom: '35px' }}>
-        <h1 style={{
-          fontSize: '2.2rem',
-          fontWeight: 'bold',
-          marginBottom: '8px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
-        }}>
-          Enter Verification Code
-        </h1>
-        <p style={{
-          color: '#6b7280',
-          fontSize: '1rem',
-          margin: 0
-        }}>
-          We sent a 6-digit code to <strong>{verifiedEmail}</strong>
-        </p>
-      </div>
-
-      {verifyError && (
-        <div style={{
-          background: '#fee2e2',
-          color: '#dc2626',
-          padding: '12px 16px',
-          borderRadius: '10px',
-          marginBottom: '20px',
-          border: '1px solid #fecaca',
-          fontSize: '0.9rem'
-        }}>
-          {verifyError}
-        </div>
-      )}
-
-      <form onSubmit={handleVerifyCode}>
-        <div style={{ marginBottom: '25px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: '600',
-            color: '#374151',
-            fontSize: '0.95rem'
-          }}>
-            Verification Code *
-          </label>
-          <input
-            type="text"
-            value={verificationCode}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-              setVerificationCode(value);
-            }}
-            required
-            style={{
-              ...getInputStyle('code'),
-              textAlign: 'center',
-              fontSize: '1.5rem',
-              letterSpacing: '8px',
-              fontFamily: 'monospace'
-            }}
-            placeholder="000000"
-            maxLength={6}
-            disabled={verifyLoading}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={verifyLoading || verificationCode.length !== 6}
-          style={{
-            width: '100%',
-            background: (verifyLoading || verificationCode.length !== 6)
-              ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)' 
-              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            padding: '16px',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: '1.1rem',
-            fontWeight: '600',
-            cursor: (verifyLoading || verificationCode.length !== 6) ? 'not-allowed' : 'pointer',
-            transition: 'all 0.3s ease',
-            opacity: (verifyLoading || verificationCode.length !== 6) ? 0.8 : 1,
-            marginBottom: '15px'
-          }}
-        >
-          {verifyLoading ? 'Verifying...' : 'Verify Code'}
-        </button>
-
-        <button
-          type="button"
-          onClick={handleResendCode}
-          style={{
-            width: '100%',
-            background: 'transparent',
-            color: '#667eea',
-            padding: '12px',
-            border: '2px solid #667eea',
-            borderRadius: '12px',
-            fontSize: '0.95rem',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease'
-          }}
-        >
-          Resend Code
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setStep(1);
-            setVerificationCode('');
-            setVerifyError('');
-          }}
-          style={{
-            width: '100%',
-            background: 'transparent',
-            color: '#6b7280',
-            padding: '12px',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: '0.9rem',
-            marginTop: '10px',
-            cursor: 'pointer'
-          }}
-        >
-          ← Change Email
-        </button>
-      </form>
-    </>
-  );
-
-  // Step 3: Registration Form
-  const renderRegistrationForm = () => (
-    <>
-      <div style={{ textAlign: 'center', marginBottom: '35px' }}>
-        <h1 style={{
-          fontSize: '2.2rem',
-          fontWeight: 'bold',
-          marginBottom: '8px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
-        }}>
-          Create Account
-        </h1>
-        <p style={{
-          color: '#6b7280',
-          fontSize: '1rem',
-          margin: 0
-        }}>
-          Complete your registration
-        </p>
-        <p style={{
-          color: '#10b981',
-          fontSize: '0.9rem',
-          marginTop: '8px',
-          fontWeight: '600'
-        }}>
-          ✓ Email verified: {verifiedEmail}
-        </p>
-      </div>
-
-      {error && (
-        <div style={{
-          background: '#fee2e2',
-          color: '#dc2626',
-          padding: '12px 16px',
-          borderRadius: '10px',
-          marginBottom: '20px',
-          border: '1px solid #fecaca',
-          fontSize: '0.9rem'
-        }}>
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontWeight: '600',
-              color: '#374151',
-              fontSize: '0.95rem'
-            }}>
-              First Name *
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600',
+                color: '#374151',
+                fontSize: '0.95rem'
+              }}
+            >
+              I want to join as *
+            </label>
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '12px',
+                fontSize: '1rem',
+                background: 'white',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="student">Student</option>
+              <option value="institute">Institution</option>
+              <option value="company">Company</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '6px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  fontSize: '0.95rem'
+                }}
+              >
+                First Name *
+              </label>
+              <input
+                type="text"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  border: formErrors.firstName ? '2px solid #ef4444' : '2px solid #e5e7eb',
+                  borderRadius: '12px',
+                  fontSize: '1rem',
+                  background: 'white'
+                }}
+              />
+              {formErrors.firstName && (
+                <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '6px', display: 'block' }}>
+                  {formErrors.firstName}
+                </span>
+              )}
+            </div>
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '6px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  fontSize: '0.95rem'
+                }}
+              >
+                Last Name *
+              </label>
+              <input
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  border: formErrors.lastName ? '2px solid #ef4444' : '2px solid #e5e7eb',
+                  borderRadius: '12px',
+                  fontSize: '1rem',
+                  background: 'white'
+                }}
+              />
+              {formErrors.lastName && (
+                <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '6px', display: 'block' }}>
+                  {formErrors.lastName}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '6px',
+                fontWeight: '600',
+                color: '#374151',
+                fontSize: '0.95rem'
+              }}
+            >
+              Email Address *
             </label>
             <input
-              type="text"
-              name="firstName"
-              value={formData.firstName}
+              type="email"
+              name="email"
+              value={formData.email}
               onChange={handleChange}
-              onBlur={handleBlur}
-              onKeyPress={handleNameKeyPress}
-              required
-              style={getInputStyle('firstName')}
-              placeholder="Enter first name"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: formErrors.email ? '2px solid #ef4444' : '2px solid #e5e7eb',
+                borderRadius: '12px',
+                fontSize: '1rem',
+                background: 'white'
+              }}
             />
-            {errors.firstName && (
-              <div style={{
-                color: '#ef4444',
-                fontSize: '0.85rem',
-                marginTop: '6px'
-              }}>
-                ⚠️ {errors.firstName}
-              </div>
+            {formErrors.email && (
+              <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '6px', display: 'block' }}>
+                {formErrors.email}
+              </span>
             )}
           </div>
 
           <div>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontWeight: '600',
-              color: '#374151',
-              fontSize: '0.95rem'
-            }}>
-              Last Name *
-            </label>
-            <input
-              type="text"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              onKeyPress={handleNameKeyPress}
-              required
-              style={getInputStyle('lastName')}
-              placeholder="Enter last name"
-            />
-            {errors.lastName && (
-              <div style={{
-                color: '#ef4444',
-                fontSize: '0.85rem',
-                marginTop: '6px'
-              }}>
-                ⚠️ {errors.lastName}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: '600',
-            color: '#374151',
-            fontSize: '0.95rem'
-          }}>
-            Phone Number
-          </label>
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            style={getInputStyle('phone')}
-            placeholder="Enter your phone number"
-          />
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: '600',
-            color: '#374151',
-            fontSize: '0.95rem'
-          }}>
-            I want to join as *
-          </label>
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              border: '2px solid #e5e7eb',
-              borderRadius: '12px',
-              fontSize: '1rem',
-              background: 'white',
-              cursor: 'pointer',
-              outline: 'none'
-            }}
-          >
-            <option value="student">🎓 Student</option>
-            <option value="institute">🏫 Institution</option>
-            <option value="company">💼 Company</option>
-          </select>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
-          <div>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontWeight: '600',
-              color: '#374151',
-              fontSize: '0.95rem'
-            }}>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '6px',
+                fontWeight: '600',
+                color: '#374151',
+                fontSize: '0.95rem'
+              }}
+            >
               Password *
             </label>
             <input
@@ -669,30 +280,32 @@ const Register = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              style={getInputStyle('password')}
-              placeholder="Create password"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: formErrors.password ? '2px solid #ef4444' : '2px solid #e5e7eb',
+                borderRadius: '12px',
+                fontSize: '1rem',
+                background: 'white'
+              }}
             />
-            {errors.password && (
-              <div style={{
-                color: '#ef4444',
-                fontSize: '0.85rem',
-                marginTop: '6px'
-              }}>
-                ⚠️ {errors.password}
-              </div>
+            {formErrors.password && (
+              <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '6px', display: 'block' }}>
+                {formErrors.password}
+              </span>
             )}
           </div>
 
           <div>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontWeight: '600',
-              color: '#374151',
-              fontSize: '0.95rem'
-            }}>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '6px',
+                fontWeight: '600',
+                color: '#374151',
+                fontSize: '0.95rem'
+              }}
+            >
               Confirm Password *
             </label>
             <input
@@ -700,79 +313,93 @@ const Register = () => {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              style={getInputStyle('confirmPassword')}
-              placeholder="Confirm password"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: formErrors.confirmPassword ? '2px solid #ef4444' : '2px solid #e5e7eb',
+                borderRadius: '12px',
+                fontSize: '1rem',
+                background: 'white'
+              }}
             />
-            {errors.confirmPassword && (
-              <div style={{
-                color: '#ef4444',
-                fontSize: '0.85rem',
-                marginTop: '6px'
-              }}>
-                ⚠️ {errors.confirmPassword}
-              </div>
+            {formErrors.confirmPassword && (
+              <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '6px', display: 'block' }}>
+                {formErrors.confirmPassword}
+              </span>
             )}
           </div>
-        </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            background: loading 
-              ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)' 
-              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            padding: '16px',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: '1.1rem',
-            fontWeight: '600',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            transition: 'all 0.3s ease',
-            opacity: loading ? 0.8 : 1
-          }}
-        >
-          {loading ? 'Creating Account...' : 'Create Account'}
-        </button>
-      </form>
-    </>
-  );
-
-  return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
-        {step === 1 && renderEmailStep()}
-        {step === 2 && renderVerifyStep()}
-        {step === 3 && renderRegistrationForm()}
-
-        <div style={{
-          textAlign: 'center',
-          marginTop: '30px',
-          paddingTop: '25px',
-          borderTop: '1px solid #e5e7eb'
-        }}>
-          <p style={{
-            color: '#6b7280',
-            fontSize: '0.95rem',
-            margin: 0
-          }}>
-            Already have an account?{' '}
-            <Link 
-              to="/login" 
+          <div>
+            <label
               style={{
-                color: '#667eea',
-                textDecoration: 'none',
-                fontWeight: '600'
+                display: 'block',
+                marginBottom: '6px',
+                fontWeight: '600',
+                color: '#374151',
+                fontSize: '0.95rem'
               }}
             >
+              Phone Number (optional)
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: formErrors.phone ? '2px solid #ef4444' : '2px solid #e5e7eb',
+                borderRadius: '12px',
+                fontSize: '1rem',
+                background: 'white'
+              }}
+            />
+            {formErrors.phone && (
+              <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '6px', display: 'block' }}>
+                {formErrors.phone}
+              </span>
+            )}
+          </div>
+
+          {(submitError || error) && (
+            <div
+              style={{
+                background: '#fee2e2',
+                border: '1px solid #fca5a5',
+                color: '#b91c1c',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}
+            >
+              <span>{submitError || error}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || hasErrors}
+            className="btn btn-primary"
+            style={{
+              width: '100%',
+              padding: '12px',
+              fontSize: '1rem',
+              fontWeight: '600'
+            }}
+          >
+            {loading ? 'Creating account...' : 'Create Account'}
+          </button>
+
+          <div style={{ textAlign: 'center', marginTop: '10px', color: '#6b7280' }}>
+            Already have an account?{' '}
+            <Link to="/login" style={{ color: '#4f46e5', fontWeight: '600' }}>
               Sign in here
             </Link>
-          </p>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   );

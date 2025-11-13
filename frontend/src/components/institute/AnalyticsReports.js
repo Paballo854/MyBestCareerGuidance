@@ -1,8 +1,10 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { instituteAPI } from '../../services/api';
 
 const AnalyticsReports = () => {
   const [timeRange, setTimeRange] = useState('month');
   const [selectedCourse, setSelectedCourse] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const [analytics, setAnalytics] = useState({
     applications: {
@@ -20,39 +22,23 @@ const AnalyticsReports = () => {
   });
 
   useEffect(() => {
-    // Mock data - will connect to backend
-    setAnalytics({
-      applications: {
-        total: 156,
-        admitted: 45,
-        rejected: 78,
-        pending: 33
-      },
-      courses: [
-        { name: 'BSc in IT', applications: 67, admitted: 25, conversion: 37.3 },
-        { name: 'Diploma in SE', applications: 45, admitted: 12, conversion: 26.7 },
-        { name: 'BSc in CS', applications: 32, admitted: 8, conversion: 25.0 },
-        { name: 'Diploma in BIT', applications: 12, admitted: 0, conversion: 0 }
-      ],
-      trends: [
-        { month: 'Jan', applications: 45, admitted: 15 },
-        { month: 'Feb', applications: 38, admitted: 12 },
-        { month: 'Mar', applications: 52, admitted: 18 },
-        { month: 'Apr', applications: 41, admitted: 14 },
-        { month: 'May', applications: 48, admitted: 16 },
-        { month: 'Jun', applications: 55, admitted: 20 }
-      ],
-      demographics: {
-        gender: { male: 85, female: 71 },
-        location: { 
-          'Maseru': 98, 
-          'Leribe': 25, 
-          'Berea': 18, 
-          'Mafeteng': 15 
-        }
+    loadAnalytics();
+  }, [timeRange]);
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true);
+      const response = await instituteAPI.getAnalytics();
+      if (response.success && response.analytics) {
+        setAnalytics(response.analytics || analytics);
       }
-    });
-  }, []);
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      // Keep default empty analytics on error
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const calculatePercentage = (part, total) => {
     return total > 0 ? ((part / total) * 100).toFixed(1) : 0;

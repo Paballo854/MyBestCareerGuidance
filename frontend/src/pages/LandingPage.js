@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 const LandingPage = () => {
@@ -13,13 +13,6 @@ const LandingPage = () => {
         padding: '0 20px'
       }}>
         <div style={{display: 'flex', alignItems: 'center'}}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            background: 'white',
-            borderRadius: '8px',
-            marginRight: '8px'
-          }}></div>
           <span style={{color: 'white', fontSize: '20px', fontWeight: 'bold'}}>
             CareerGuide
           </span>
@@ -74,17 +67,7 @@ const LandingPage = () => {
               {title: 'Administrators', desc: 'Monitor system and manage users.'}
             ].map((feature, index) => (
               <div key={index} className="card">
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  background: '#dbeafe',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px',
-                  fontSize: '24px'
-                }}>📚</div>
+                
                 <h3 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'center'}}>
                   {feature.title}
                 </h3>
@@ -126,38 +109,7 @@ const LandingPage = () => {
               <p style={{color: '#d1d5db', lineHeight: '1.6', marginBottom: '20px'}}>
                 Empowering students and professionals to discover their career path and connect with opportunities that shape their future.
               </p>
-              <div style={{display: 'flex', gap: '16px'}}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  background: '#374151',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer'
-                }}>📘</div>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  background: '#374151',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer'
-                }}>📷</div>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  background: '#374151',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer'
-                }}>🐦</div>
-              </div>
+              
             </div>
 
             {/* Quick Links */}
@@ -187,20 +139,16 @@ const LandingPage = () => {
             <div>
               <h3 style={{fontSize: '18px', fontWeight: 'bold', marginBottom: '20px'}}>Contact Us</h3>
               <div style={{display: 'flex', flexDirection: 'column', gap: '12px', color: '#d1d5db'}}>
-                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                  <span>📧</span>
+              <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                   <span>info-careerguide@limkokwing.ac.ls</span>
                 </div>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                  <span>📞</span>
                   <span>+266 1234 5678</span>
                 </div>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                  <span>🏢</span>
                   <span>Limkokwing University, Maseru, Lesotho</span>
                 </div>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                  <span>👨‍🏫</span>
                   <span>Lecturers: Mr Thokoana & Mr Molaoa</span>
                 </div>
               </div>

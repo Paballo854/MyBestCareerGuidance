@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { studentAPI } from '../../services/api';
 import DashboardLayout from '../common/DashboardLayout';
@@ -101,16 +101,6 @@ const StudentDashboard = () => {
     }}>
       <div style={{
         fontSize: '2rem',
-        color: color,
-        marginBottom: '8px'
-      }}>
-        {title === 'Total Applications' && '📋'}
-        {title === 'Admitted' && '✅'}
-        {title === 'Pending' && '⏳'}
-        {title === 'Jobs Applied' && '💼'}
-      </div>
-      <div style={{
-        fontSize: '2rem',
         fontWeight: 'bold',
         color: colors.neutral800,
         marginBottom: '4px'
@@ -161,16 +151,6 @@ const StudentDashboard = () => {
         e.currentTarget.style.borderColor = '#e2e8f0';
       }}
     >
-      <div style={{
-        fontSize: '2.5rem',
-        marginBottom: '16px',
-        color: color
-      }}>
-        {title === 'Browse Courses' && '🎓'}
-        {title === 'My Applications' && '📋'}
-        {title === 'Documents' && '📄'}
-        {title === 'Job Search' && '💼'}
-      </div>
       <h3 style={{
         fontSize: '1.1rem',
         fontWeight: 'bold',
@@ -195,7 +175,7 @@ const StudentDashboard = () => {
         fontWeight: '600',
         fontSize: '0.8rem',
       }}>
-        Get Started →
+        Get Started
       </div>
     </div>
   );
@@ -318,9 +298,9 @@ const StudentDashboard = () => {
             color: colors.neutral600,
             fontSize: '0.9rem'
           }}>
-            <div>📧 support@careerguide.ls</div>
-            <div>📞 +266 1234 5678</div>
-            <div>📍 Maseru, Lesotho</div>
+            <div>support@careerguide.ls</div>
+            <div>+266 1234 5678</div>
+            <div>Maseru, Lesotho</div>
           </div>
         </div>
       </div>
@@ -359,11 +339,6 @@ const StudentDashboard = () => {
           border: '1px solid #e2e8f0',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
         }}>
-          <div style={{ 
-            fontSize: '3rem', 
-            marginBottom: '16px',
-            color: colors.primary
-          }}>⏳</div>
           <div style={{ 
             fontSize: '1.2rem', 
             fontWeight: 'bold', 
@@ -481,12 +456,6 @@ const StudentDashboard = () => {
                     background: '#f8fafc',
                     borderRadius: '8px',
                   }}>
-                    <div style={{
-                      fontSize: '1.2rem',
-                      color: app.status === 'approved' ? colors.success : colors.warning
-                    }}>
-                      {app.status === 'approved' ? '✅' : '📋'}
-                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ 
                         fontWeight: '600', 
@@ -510,7 +479,6 @@ const StudentDashboard = () => {
                 padding: '40px 20px',
                 color: colors.neutral600
               }}>
-                <div style={{ fontSize: '2rem', marginBottom: '12px' }}>📝</div>
                 <div style={{ fontWeight: '600', marginBottom: '8px', color: colors.neutral800 }}>
                   No Recent Activity
                 </div>

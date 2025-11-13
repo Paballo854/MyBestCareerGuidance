@@ -8,19 +8,19 @@ const { initializeFirebase } = require('./src/config/firebase-setup');
 
 const findUser = async (searchTerm) => {
     try {
-        console.log('\n🔍 ===== SEARCHING FOR USER =====');
-        console.log(`📧 Search term: ${searchTerm}`);
+        console.log('\n===== SEARCHING FOR USER =====');
+        console.log(`Search term: ${searchTerm}`);
         console.log('');
 
         const { db } = initializeFirebase();
 
         if (!db) {
-            console.error('❌ Firebase not initialized.');
+            console.error('Firebase not initialized.');
             process.exit(1);
         }
 
         // Search in users collection
-        console.log('🔍 Searching in users collection...');
+        console.log('Searching in users collection...');
         const usersSnapshot = await db.collection('users').get();
         
         const matches = [];
@@ -41,7 +41,7 @@ const findUser = async (searchTerm) => {
         });
 
         if (matches.length > 0) {
-            console.log(`\n✅ Found ${matches.length} matching user(s):\n`);
+            console.log(`\nFound ${matches.length} matching user(s):\n`);
             matches.forEach((user, index) => {
                 console.log(`${index + 1}. Email: ${user.email}`);
                 console.log(`   Name: ${user.firstName || 'N/A'} ${user.lastName || 'N/A'}`);
@@ -50,11 +50,11 @@ const findUser = async (searchTerm) => {
                 console.log('');
             });
         } else {
-            console.log('❌ No users found matching the search term.');
+            console.log('No users found matching the search term.');
         }
 
         // Also check tempEmailVerifications
-        console.log('\n🔍 Checking temporary email verifications...');
+        console.log('\nChecking temporary email verifications...');
         const tempSnapshot = await db.collection('tempEmailVerifications').get();
         const tempMatches = [];
         tempSnapshot.forEach(doc => {
@@ -67,7 +67,7 @@ const findUser = async (searchTerm) => {
         });
 
         if (tempMatches.length > 0) {
-            console.log(`\n✅ Found ${tempMatches.length} temporary verification(s):\n`);
+            console.log(`\nFound ${tempMatches.length} temporary verification(s):\n`);
             tempMatches.forEach((temp, index) => {
                 console.log(`${index + 1}. Email: ${temp.email}`);
                 console.log(`   Verified: ${temp.verified ? 'Yes' : 'No'}`);
@@ -77,7 +77,7 @@ const findUser = async (searchTerm) => {
         }
 
     } catch (error) {
-        console.error('\n❌ ERROR:', error.message);
+        console.error('\nERROR:', error.message);
         process.exit(1);
     }
 };
@@ -85,7 +85,7 @@ const findUser = async (searchTerm) => {
 const searchTerm = process.argv[2];
 
 if (!searchTerm) {
-    console.error('❌ Error: Search term is required');
+    console.error('Error: Search term is required');
     console.log('\nUsage: node find-user.js <search-term>');
     console.log('Example: node find-user.js toka70518');
     process.exit(1);
@@ -93,11 +93,11 @@ if (!searchTerm) {
 
 findUser(searchTerm)
     .then(() => {
-        console.log('\n✅ Search completed');
+        console.log('\nSearch completed');
         process.exit(0);
     })
     .catch((error) => {
-        console.error('❌ Search failed:', error);
+        console.error('Search failed:', error);
         process.exit(1);
     });
 

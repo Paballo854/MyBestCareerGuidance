@@ -1,62 +1,46 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { instituteAPI } from '../../services/api';
 
 const AdmissionPublication = () => {
   const [admissionResults, setAdmissionResults] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState('');
   const [publicationDate, setPublicationDate] = useState('');
   const [isPublished, setIsPublished] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data - will connect to backend
-    setAdmissionResults([
-      {
-        id: 1,
-        studentName: 'John Doe',
-        course: 'BSc in Information Technology',
-        status: 'Admitted',
-        decisionDate: '2025-01-20',
-        studentEmail: 'john.doe@student.com',
-        applicationId: 'APP001'
-      },
-      {
-        id: 2,
-        studentName: 'Jane Smith',
-        course: 'Diploma in Software Engineering',
-        status: 'Admitted',
-        decisionDate: '2025-01-20',
-        studentEmail: 'jane.smith@student.com',
-        applicationId: 'APP002'
-      },
-      {
-        id: 3,
-        studentName: 'Mike Johnson',
-        course: 'BSc in Information Technology',
-        status: 'Rejected',
-        decisionDate: '2025-01-20',
-        studentEmail: 'mike.johnson@student.com',
-        applicationId: 'APP003'
-      },
-      {
-        id: 4,
-        studentName: 'Sarah Wilson',
-        course: 'Diploma in Business IT',
-        status: 'Waitlisted',
-        decisionDate: '2025-01-20',
-        studentEmail: 'sarah.wilson@student.com',
-        applicationId: 'APP004'
-      }
-    ]);
-
+    loadAdmissionResults();
     setPublicationDate(new Date().toISOString().split('T')[0]);
   }, []);
 
-  const courses = [...new Set(admissionResults.map(result => result.course))];
+  const loadAdmissionResults = async () => {
+    try {
+      setLoading(true);
+      const response = await instituteAPI.getAdmissionResults();
+      if (response.success && response.admissions) {
+        setAdmissionResults(response.admissions || []);
+      }
+    } catch (error) {
+      console.error('Error loading admission results:', error);
+      alert('Failed to load admission results. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const courses = [...new Set(admissionResults.map(result => result.courseName || result.course?.name || result.course))];
   const filteredResults = selectedCourse 
-    ? admissionResults.filter(result => result.course === selectedCourse)
+    ? admissionResults.filter(result => (result.courseName || result.course?.name || result.course) === selectedCourse)
     : admissionResults;
 
   const getStatusCount = (status) => {
-    return admissionResults.filter(result => result.status === status).length;
+    return admissionResults.filter(result => {
+      const resultStatus = result.status?.toLowerCase();
+      return resultStatus === status.toLowerCase() || 
+             (status === 'Admitted' && resultStatus === 'approved') ||
+             (status === 'Rejected' && resultStatus === 'rejected') ||
+             (status === 'Waitlisted' && resultStatus === 'waitlisted');
+    }).length;
   };
 
   const handlePublish = () => {
@@ -141,7 +125,7 @@ const AdmissionPublication = () => {
             borderRadius: '6px',
             color: '#065f46'
           }}>
-            ✅ Admission results published on {publicationDate}. Students have been notified via email.
+            Admission results published on {publicationDate}. Students have been notified via email.
           </div>
         )}
       </div>
@@ -176,7 +160,11 @@ const AdmissionPublication = () => {
           Admission Results ({filteredResults.length})
         </h3>
         
-        {filteredResults.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+            Loading admission results...
+          </div>
+        ) : filteredResults.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
             No admission results found for the selected course.
           </div>
@@ -198,12 +186,16 @@ const AdmissionPublication = () => {
                   <tr key={result.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                     <td style={{ padding: '12px' }}>
                       <div>
-                        <div style={{ fontWeight: '500' }}>{result.studentName}</div>
-                        <div style={{ color: '#6b7280', fontSize: '14px' }}>{result.studentEmail}</div>
+                        <div style={{ fontWeight: '500' }}>
+                          {result.student?.firstName || ''} {result.student?.lastName || ''} {result.studentName || 'Unknown'}
+                        </div>
+                        <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                          {result.student?.email || result.studentEmail || 'N/A'}
+                        </div>
                       </div>
                     </td>
-                    <td style={{ padding: '12px' }}>{result.course}</td>
-                    <td style={{ padding: '12px' }}>{result.applicationId}</td>
+                    <td style={{ padding: '12px' }}>{result.courseName || result.course?.name || result.course || 'N/A'}</td>
+                    <td style={{ padding: '12px' }}>{result.id || result.applicationId || 'N/A'}</td>
                     <td style={{ padding: '12px' }}>
                       <span style={{
                         padding: '4px 12px',
@@ -213,10 +205,12 @@ const AdmissionPublication = () => {
                         background: getStatusColor(result.status) + '20',
                         color: getStatusColor(result.status)
                       }}>
-                        {result.status}
+                        {result.status === 'approved' ? 'Admitted' : result.status === 'rejected' ? 'Rejected' : result.status === 'waitlisted' ? 'Waitlisted' : result.status || 'Pending'}
                       </span>
                     </td>
-                    <td style={{ padding: '12px' }}>{result.decisionDate}</td>
+                    <td style={{ padding: '12px' }}>
+                      {result.updatedAt ? (result.updatedAt.seconds ? new Date(result.updatedAt.seconds * 1000).toLocaleDateString() : new Date(result.updatedAt).toLocaleDateString()) : result.decisionDate || 'N/A'}
+                    </td>
                     <td style={{ padding: '12px' }}>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button style={{

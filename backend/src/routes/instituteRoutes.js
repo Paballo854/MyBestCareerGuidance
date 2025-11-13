@@ -2,7 +2,9 @@
 const { 
     getInstituteDashboard, 
     addCourse, 
-    getInstituteCourses, 
+    getInstituteCourses,
+    updateCourse,
+    deleteCourse,
     getStudentApplications, 
     updateApplicationStatus, 
     updateInstituteProfile,
@@ -10,7 +12,9 @@ const {
     addFaculty,
     getInstituteFaculties,
     updateFaculty,
-    deleteFaculty
+    deleteFaculty,
+    getAdmissionResults,
+    getAnalytics
 } = require("../controllers/instituteController");
 const { authMiddleware, instituteMiddleware } = require("../middleware/auth");
 
@@ -73,6 +77,16 @@ router.post("/courses", addCourse);
 // @access  Private (Institute)
 router.get("/courses", getInstituteCourses);
 
+// @desc    Update course
+// @route   PUT /api/institute/courses/:id
+// @access  Private (Institute)
+router.put("/courses/:courseId", updateCourse);
+
+// @desc    Delete course
+// @route   DELETE /api/institute/courses/:id
+// @access  Private (Institute)
+router.delete("/courses/:courseId", deleteCourse);
+
 // ====================================
 // APPLICATION MANAGEMENT ROUTES
 // ====================================
@@ -86,5 +100,15 @@ router.get("/applications", getStudentApplications);
 // @route   PUT /api/institute/applications/status
 // @access  Private (Institute)
 router.put("/applications/status", updateApplicationStatus);
+
+// @desc    Get admission results
+// @route   GET /api/institute/admissions
+// @access  Private (Institute)
+router.get("/admissions", getAdmissionResults);
+
+// @desc    Get analytics
+// @route   GET /api/institute/analytics
+// @access  Private (Institute)
+router.get("/analytics", getAnalytics);
 
 module.exports = router;

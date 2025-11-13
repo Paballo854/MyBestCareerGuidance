@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -47,13 +47,6 @@ const DashboardLayout = ({ children, userRole, userName }) => {
               fontWeight: 'bold',
               fontSize: '20px'
             }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                borderRadius: '8px',
-                marginRight: '10px'
-              }}></div>
               CareerGuide
             </Link>
             

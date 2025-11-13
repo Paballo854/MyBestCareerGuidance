@@ -14,7 +14,7 @@ class User {
         this.role = data.role;
         this.firstName = data.firstName;
         this.lastName = data.lastName;
-        this.isVerified = data.isVerified || false; // Require email verification
+        this.isVerified = data.isVerified !== undefined ? data.isVerified : true;
         this.verificationCode = data.verificationCode || null;
         this.verificationCodeExpiry = data.verificationCodeExpiry || null;
         this.createdAt = data.createdAt || new Date().toISOString();
@@ -32,7 +32,7 @@ class User {
                 role: this.role,
                 firstName: this.firstName,
                 lastName: this.lastName,
-                isVerified: this.isVerified || false, // Require verification
+                isVerified: this.isVerified !== undefined ? this.isVerified : true,
                 verificationCode: this.verificationCode || null,
                 verificationCodeExpiry: this.verificationCodeExpiry || null,
                 createdAt: this.createdAt,
@@ -100,22 +100,14 @@ class User {
                 return { success: false, message: 'User not found' };
             }
 
-            // CHECK EMAIL VERIFICATION - REQUIRED
-            if (!user.isVerified) {
-                return { 
-                    success: false, 
-                    message: 'Please verify your email before logging in. Check your inbox for the verification code.',
-                    requiresVerification: true
-                };
-            }
-
             const isPasswordValid = await comparePassword(password, user.password);
             if (!isPasswordValid) {
                 return { success: false, message: 'Invalid password' };
             }
 
-            // Generate token
+            // Generate token (use email as id since users are stored with email as document ID)
             const token = generateToken({
+                id: user.email, // Use email as ID since that's the document ID in Firestore
                 email: user.email,
                 role: user.role,
                 firstName: user.firstName,

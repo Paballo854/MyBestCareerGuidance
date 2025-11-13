@@ -1,5 +1,6 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { adminAPI } from '../../services/api';
 import UserManagement from './UserManagement';
 import InstitutionManagement from './InstitutionManagement';
 import CompanyManagement from './CompanyManagement';
@@ -7,34 +8,55 @@ import SystemReports from './SystemReports';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalInstitutions: 0,
+    totalCompanies: 0,
+    pendingApprovals: 0,
+    totalApplications: 0,
+    activeStudents: 0,
+    jobPostings: 0,
+    applicationStats: { pending: 0, approved: 0, rejected: 0 },
+    userCounts: { student: 0, institute: 0, company: 0, admin: 0 }
+  });
+  const [loading, setLoading] = useState(true);
   const { logout } = useAuth();
 
-  // WORKING LOGOUT FUNCTION
-  const handleLogout = () => {
-    console.log('🎯 LOGOUT BUTTON CLICKED!');
-    alert('LOGOUT IS WORKING!');
-    
-    if (window.confirm('Are you sure you want to logout?')) {
-      console.log('✅ User confirmed logout');
-      // Clear localStorage
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      console.log('🗑️ LocalStorage cleared');
-      // Redirect to login
-      window.location.href = '/login';
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await adminAPI.getDashboard();
+      if (response.success && response.stats) {
+        setStats({
+          totalUsers: response.stats.totalUsers || 0,
+          totalInstitutions: response.stats.totalInstitutions || 0,
+          totalCompanies: response.stats.totalCompanies || 0,
+          pendingApprovals: response.stats.applicationStats?.pending || 0,
+          totalApplications: response.stats.totalApplications || 0,
+          activeStudents: response.stats.userCounts?.student || 0,
+          jobPostings: response.stats.totalJobs || 0,
+          applicationStats: response.stats.applicationStats || { pending: 0, approved: 0, rejected: 0 },
+          userCounts: response.stats.userCounts || { student: 0, institute: 0, company: 0, admin: 0 }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Mock statistics data
-  const stats = {
-    totalUsers: 1250,
-    totalInstitutions: 15,
-    totalCompanies: 42,
-    pendingApprovals: 8,
-    totalApplications: 1567,
-    activeStudents: 980,
-    jobPostings: 67,
-    systemHealth: 'Excellent'
+  // WORKING LOGOUT FUNCTION
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
   };
 
   const renderContent = () => {
@@ -46,38 +68,64 @@ const AdminDashboard = () => {
               Admin Dashboard
             </h2>
 
-            {/* Statistics Grid */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-              gap: '20px', 
-              marginBottom: '40px' 
-            }}>
-              <div className="card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6', marginBottom: '8px' }}>
-                  {stats.totalUsers}
-                </div>
-                <div style={{ color: '#6b7280', fontWeight: '500' }}>Total Users</div>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <div>Loading dashboard data...</div>
               </div>
-              <div className="card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
-                  {stats.totalInstitutions}
+            ) : (
+              <>
+                {/* Statistics Grid */}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+                  gap: '20px', 
+                  marginBottom: '40px' 
+                }}>
+                  <div className="card" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6', marginBottom: '8px' }}>
+                      {stats.totalUsers}
+                    </div>
+                    <div style={{ color: '#6b7280', fontWeight: '500' }}>Total Users</div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
+                      Students: {stats.userCounts.student} | Institutes: {stats.userCounts.institute} | Companies: {stats.userCounts.company}
+                    </div>
+                  </div>
+                  <div className="card" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
+                      {stats.totalInstitutions}
+                    </div>
+                    <div style={{ color: '#6b7280', fontWeight: '500' }}>Institutions</div>
+                  </div>
+                  <div className="card" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#8b5cf6', marginBottom: '8px' }}>
+                      {stats.totalCompanies}
+                    </div>
+                    <div style={{ color: '#6b7280', fontWeight: '500' }}>Companies</div>
+                  </div>
+                  <div className="card" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#f59e0b', marginBottom: '8px' }}>
+                      {stats.pendingApprovals}
+                    </div>
+                    <div style={{ color: '#6b7280', fontWeight: '500' }}>Pending Applications</div>
+                  </div>
+                  <div className="card" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6', marginBottom: '8px' }}>
+                      {stats.totalApplications}
+                    </div>
+                    <div style={{ color: '#6b7280', fontWeight: '500' }}>Total Applications</div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
+                      Approved: {stats.applicationStats.approved} | Rejected: {stats.applicationStats.rejected}
+                    </div>
+                  </div>
+                  <div className="card" style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
+                      {stats.jobPostings}
+                    </div>
+                    <div style={{ color: '#6b7280', fontWeight: '500' }}>Job Postings</div>
+                  </div>
                 </div>
-                <div style={{ color: '#6b7280', fontWeight: '500' }}>Institutions</div>
-              </div>
-              <div className="card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#8b5cf6', marginBottom: '8px' }}>
-                  {stats.totalCompanies}
-                </div>
-                <div style={{ color: '#6b7280', fontWeight: '500' }}>Companies</div>
-              </div>
-              <div className="card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#f59e0b', marginBottom: '8px' }}>
-                  {stats.pendingApprovals}
-                </div>
-                <div style={{ color: '#6b7280', fontWeight: '500' }}>Pending Approvals</div>
-              </div>
-            </div>
+              </>
+            )}
 
             {/* Quick Actions */}
             <div className="card" style={{ marginBottom: '30px' }}>
