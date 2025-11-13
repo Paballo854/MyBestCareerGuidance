@@ -12,7 +12,9 @@ const {
   uploadTranscripts,
   browseJobs,
   applyForJob,
-  getAdmissionResults
+  getAdmissionResults,
+  selectAdmission,
+  updateProfile
 } = require('../controllers/studentController');
 
 const router = express.Router();
@@ -25,6 +27,11 @@ const router = express.Router();
 // @route   GET /api/student/dashboard
 // @access  Private (Student)
 router.get('/dashboard', authMiddleware, getDashboard);
+
+// @desc    Update student profile
+// @route   PUT /api/student/profile
+// @access  Private (Student)
+router.put('/profile', authMiddleware, updateProfile);
 
 // ====================================
 // INSTITUTION & COURSE BROWSING ROUTES
@@ -58,6 +65,11 @@ router.get('/applications', authMiddleware, getStudentApplications);
 // @route   GET /api/student/admissions
 // @access  Private (Student)
 router.get('/admissions', authMiddleware, getAdmissionResults);
+
+// @desc    Select admission when multiple admissions exist
+// @route   POST /api/student/select-admission
+// @access  Private (Student)
+router.post('/select-admission', authMiddleware, selectAdmission);
 
 // ====================================
 // JOB & CAREER ROUTES

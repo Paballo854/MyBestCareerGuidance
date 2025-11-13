@@ -1,5 +1,4 @@
 ﻿import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -13,49 +12,52 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Check if user is logged in on app start
-  useEffect(() => {
-    const checkLoggedIn = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const userData = await authAPI.getProfile();
-          setUser(userData);
-        } catch (error) {
-          console.error('Token invalid, logging out:', error);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
-      }
-      setLoading(false);
-    };
-
-    checkLoggedIn();
-  }, []);
-
-  // Login function
-  const login = async (email, password) => {
+  // FIXED LOGIN - Send data correctly without nesting
+  const login = async (credentials) => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      setError('');
-      setLoading(true);
-      
-      const response = await authAPI.login({ email, password });
-      
-      if (response.token) {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        setUser(response.user);
-        return { success: true, user: response.user };
+      console.log('🔐 Attempting login with:', credentials);
+
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: credentials.email,      // Send email directly
+          password: credentials.password // Send password directly
+          // Do NOT send role for login
+        }),
+      });
+
+      const data = await response.json();
+      console.log('📡 Login response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      if (data.success) {
+        console.log('✅ Login successful');
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        return { success: true, user: data.user };
       } else {
-        throw new Error('No token received');
+        throw new Error(data.message || 'Login failed');
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed. Please try again.';
-      setError(message);
-      return { success: false, error: message };
+      console.error('❌ Login error:', error);
+      const errorMessage = error.message || 'Login failed. Please check your credentials.';
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
@@ -63,49 +65,82 @@ export const AuthProvider = ({ children }) => {
 
   // Register function
   const register = async (userData) => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      setError('');
-      setLoading(true);
-      
-      const response = await authAPI.register(userData);
-      
-      if (response.token) {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        setUser(response.user);
-        return { success: true, user: response.user };
+      console.log('👤 Attempting registration with:', userData);
+
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          role: userData.role,
+          firstName: userData.firstName,
+          lastName: userData.lastName
+        }),
+      });
+
+      const data = await response.json();
+      console.log('📡 Register response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
+      if (data.success) {
+        console.log('✅ Registration successful');
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.token);
+        return { success: true, user: data.user };
       } else {
-        throw new Error('No token received');
+        throw new Error(data.message || 'Registration failed');
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed. Please try again.';
-      setError(message);
-      return { success: false, error: message };
+      console.error('❌ Register error:', error);
+      const errorMessage = error.message || 'Registration failed. Please try again.';
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
   };
 
-  // Logout function
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
     setUser(null);
-    setError('');
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    // Redirect to login page
+    window.location.href = '/login';
   };
 
-  // Clear error
-  const clearError = () => {
-    setError('');
-  };
+  const clearError = () => setError(null);
+
+  // Check if user is logged in on app start
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
 
   const value = {
     user,
-    loading,
-    error,
     login,
     register,
     logout,
+    loading,
+    error,
     clearError,
     isAuthenticated: !!user
   };
@@ -116,3 +151,4 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+

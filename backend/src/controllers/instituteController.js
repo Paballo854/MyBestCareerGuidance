@@ -398,10 +398,10 @@ const updateApplicationStatus = async (req, res) => {
         const { applicationId, status } = req.body;
         const instituteId = req.user.id;
 
-        if (!['pending', 'approved', 'rejected'].includes(status)) {
+        if (!['pending', 'approved', 'rejected', 'waitlisted'].includes(status)) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid status. Must be: pending, approved, or rejected"
+                message: "Invalid status. Must be: pending, approved, rejected, or waitlisted"
             });
         }
 
@@ -420,6 +420,47 @@ const updateApplicationStatus = async (req, res) => {
                 success: false,
                 message: "Not authorized to update this application"
             });
+        }
+
+        // VALIDATION: Prevent admitting same student to multiple programs
+        if (status === 'approved') {
+            const studentId = application.studentId;
+            
+            // Check if student is already approved for another program at this institution
+            const existingApprovedSnapshot = await db.collection("applications")
+                .where("institutionId", "==", instituteId)
+                .where("studentId", "==", studentId)
+                .where("status", "==", "approved")
+                .get();
+
+            // If there's already an approved application (and it's not this one)
+            if (!existingApprovedSnapshot.empty) {
+                const existingApproved = existingApprovedSnapshot.docs.find(doc => doc.id !== applicationId);
+                if (existingApproved) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Cannot approve: Student is already admitted to another program at this institution. Only one program admission per student is allowed.",
+                        existingAdmission: {
+                            applicationId: existingApproved.id,
+                            courseName: existingApproved.data().courseName
+                        }
+                    });
+                }
+            }
+
+            // Also check if student has already accepted another institution
+            const acceptedElsewhereSnapshot = await db.collection("applications")
+                .where("studentId", "==", studentId)
+                .where("status", "==", "accepted")
+                .get();
+
+            if (!acceptedElsewhereSnapshot.empty) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Cannot approve: Student has already accepted admission at another institution.",
+                    acceptedInstitution: acceptedElsewhereSnapshot.docs[0].data().institutionName
+                });
+            }
         }
 
         await db.collection("applications").doc(applicationId).update({

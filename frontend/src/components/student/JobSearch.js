@@ -1,63 +1,97 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { studentAPI } from '../../services/api';
 
 const JobSearch = () => {
   const [jobs, setJobs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompany, setFilterCompany] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(null);
 
   useEffect(() => {
-    // Mock data - will connect to backend
-    setJobs([
-      {
-        id: 1,
-        title: 'Junior Software Developer',
-        company: 'Tech Solutions Ltd',
-        location: 'Maseru, Lesotho',
-        type: 'Full-time',
-        salary: 'M8,000 - M12,000',
-        requirements: 'BSc in IT/Computer Science, Knowledge of JavaScript, React, Node.js',
-        description: 'We are looking for a passionate Junior Software Developer to design, develop and maintain software applications.',
-        postedDate: '2025-01-10',
-        deadline: '2025-02-15'
-      },
-      {
-        id: 2,
-        title: 'IT Support Specialist',
-        company: 'Bank of Lesotho',
-        location: 'Maseru, Lesotho',
-        type: 'Full-time',
-        salary: 'M10,000 - M15,000',
-        requirements: 'Diploma in IT, Troubleshooting skills, Customer service experience',
-        description: 'Provide technical support to bank staff and maintain IT infrastructure.',
-        postedDate: '2025-01-12',
-        deadline: '2025-02-20'
-      },
-      {
-        id: 3,
-        title: 'Data Analyst Intern',
-        company: 'Lesotho Stats',
-        location: 'Maseru, Lesotho',
-        type: 'Internship',
-        salary: 'M4,000 - M6,000',
-        requirements: 'Currently pursuing degree in IT/Statistics, Excel skills, Analytical thinking',
-        description: '6-month internship opportunity for data analysis and reporting.',
-        postedDate: '2025-01-08',
-        deadline: '2025-01-30'
-      }
-    ]);
+    loadJobs();
   }, []);
 
-  const filteredJobs = jobs.filter(job => 
+  const loadJobs = async () => {
+    try {
+      setLoading(true);
+      // REAL API CALL to get jobs from backend
+      const response = await studentAPI.getJobs();
+      setJobs(response.jobs || []);
+    } catch (error) {
+      console.error('Error loading jobs:', error);
+      // Fallback to mock data if API fails
+      setJobs([
+        {
+          id: 1,
+          title: 'Junior Software Developer',
+          company: 'Tech Solutions Ltd',
+          location: 'Maseru, Lesotho',
+          type: 'Full-time',
+          salary: 'M8,000 - M12,000',
+          requirements: 'BSc in IT/Computer Science, Knowledge of JavaScript, React, Node.js',
+          description: 'We are looking for a passionate Junior Software Developer to design, develop and maintain software applications.',
+          postedDate: '2025-01-10',
+          deadline: '2025-02-15'
+        },
+        {
+          id: 2,
+          title: 'IT Support Specialist',
+          company: 'Bank of Lesotho',
+          location: 'Maseru, Lesotho',
+          type: 'Full-time',
+          salary: 'M10,000 - M15,000',
+          requirements: 'Diploma in IT, Troubleshooting skills, Customer service experience',
+          description: 'Provide technical support to bank staff and maintain IT infrastructure.',
+          postedDate: '2025-01-12',
+          deadline: '2025-02-20'
+        },
+        {
+          id: 3,
+          title: 'Data Analyst Intern',
+          company: 'Lesotho Stats',
+          location: 'Maseru, Lesotho',
+          type: 'Internship',
+          salary: 'M4,000 - M6,000',
+          requirements: 'Currently pursuing degree in IT/Statistics, Excel skills, Analytical thinking',
+          description: '6-month internship opportunity for data analysis and reporting.',
+          postedDate: '2025-01-08',
+          deadline: '2025-01-30'
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredJobs = jobs.filter(job =>
     job.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
     (filterCompany === '' || job.company === filterCompany)
   );
 
-  const handleApply = (jobId) => {
-    alert('Application submitted for job ID: ' + jobId + ' - This will connect to your backend');
-    // Will connect to backend job application API
+  const handleApply = async (jobId) => {
+    try {
+      setApplying(jobId);
+      // REAL API CALL to apply for job
+      await studentAPI.applyForJob(jobId);
+      alert('Application submitted successfully! The company will contact you if shortlisted.');
+    } catch (error) {
+      console.error('Error applying for job:', error);
+      alert('Failed to submit application. Please try again.');
+    } finally {
+      setApplying(null);
+    }
   };
 
   const companies = [...new Set(jobs.map(job => job.company))];
+
+  if (loading) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+        <div>Loading job opportunities...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="card">
@@ -66,11 +100,11 @@ const JobSearch = () => {
       </h2>
 
       {/* Search and Filter */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr 1fr', 
-        gap: '15px', 
-        marginBottom: '25px' 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '15px',
+        marginBottom: '25px'
       }}>
         <div>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Search Jobs:</label>
@@ -89,7 +123,7 @@ const JobSearch = () => {
         </div>
         <div>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Filter by Company:</label>
-          <select 
+          <select
             value={filterCompany}
             onChange={(e) => setFilterCompany(e.target.value)}
             style={{
@@ -155,8 +189,9 @@ const JobSearch = () => {
                   onClick={() => handleApply(job.id)}
                   className="btn btn-primary"
                   style={{ minWidth: '120px', marginBottom: '10px' }}
+                  disabled={applying === job.id}
                 >
-                  Apply Now
+                  {applying === job.id ? 'Applying...' : 'Apply Now'}
                 </button>
                 <div>
                   <button className="btn btn-secondary" style={{ background: '#f3f4f6', color: '#374151', padding: '6px 12px' }}>

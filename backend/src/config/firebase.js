@@ -8,7 +8,9 @@ const initializeCollections = async () => {
             // Create main collections if they don't exist
             const collections = [
                 "users", "institutions", "courses", "applications", 
-                "jobPostings", "companies", "faculties", "admissions", "transcripts"
+                "jobPostings", "companies", "faculties", "admissions", "transcripts",
+                "tempEmailVerifications", // For pre-registration email verification
+                "emailQueue" // For failed email retry queue (production)
             ];
             
             console.log("📁 Firestore collections ready:", collections.join(", "));

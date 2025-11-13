@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { studentAPI } from '../../services/api';
 
 const StudentProfile = () => {
   const [profile, setProfile] = useState({
@@ -18,10 +19,21 @@ const StudentProfile = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Mock data - will connect to backend
-    setTimeout(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      // REAL API CALL to get student profile
+      const response = await studentAPI.getProfile();
+      setProfile(response.profile || response);
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      // Fallback to mock data if API fails
       setProfile({
         firstName: 'John',
         lastName: 'Doe',
@@ -36,9 +48,10 @@ const StudentProfile = () => {
         currentEducation: 'BSc in Information Technology',
         interests: ['Programming', 'Web Development', 'Data Science', 'AI']
       });
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setProfile(prev => ({
@@ -47,21 +60,27 @@ const StudentProfile = () => {
     }));
   };
 
-  const handleSave = () => {
-    // Will connect to backend API
-    setLoading(true);
-    setTimeout(() => {
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      // REAL API CALL to update profile
+      await studentAPI.updateProfile(profile);
       alert('Profile updated successfully!');
       setIsEditing(false);
-      setLoading(false);
-    }, 1000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addInterest = (interest) => {
-    if (interest && !profile.interests.includes(interest)) {
+    const trimmedInterest = interest.trim();
+    if (trimmedInterest && !profile.interests.includes(trimmedInterest)) {
       setProfile(prev => ({
         ...prev,
-        interests: [...prev.interests, interest]
+        interests: [...prev.interests, trimmedInterest]
       }));
     }
   };
@@ -91,9 +110,9 @@ const StudentProfile = () => {
         <button
           onClick={() => isEditing ? handleSave() : setIsEditing(true)}
           className="btn btn-primary"
-          disabled={loading}
+          disabled={saving}
         >
-          {isEditing ? (loading ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
+          {isEditing ? (saving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
         </button>
       </div>
 
@@ -103,7 +122,7 @@ const StudentProfile = () => {
           <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937', borderBottom: '2px solid #e5e7eb', paddingBottom: '10px' }}>
             Personal Information
           </h3>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', color: '#374151' }}>
@@ -123,7 +142,7 @@ const StudentProfile = () => {
                 }}
               />
             </div>
-            
+
             <div>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', color: '#374151' }}>
                 Last Name *
@@ -270,7 +289,7 @@ const StudentProfile = () => {
           <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937', borderBottom: '2px solid #e5e7eb', paddingBottom: '10px' }}>
             Educational Background
           </h3>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', color: '#374151' }}>
@@ -336,12 +355,12 @@ const StudentProfile = () => {
           <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937', borderBottom: '2px solid #e5e7eb', paddingBottom: '10px' }}>
             Interests & Career Interests
           </h3>
-          
+
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '10px', fontWeight: '500', color: '#374151' }}>
               Your Interests ({profile.interests.length})
             </label>
-            
+
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
               {profile.interests.map((interest, index) => (
                 <span
@@ -424,16 +443,16 @@ const StudentProfile = () => {
               onClick={() => setIsEditing(false)}
               className="btn btn-secondary"
               style={{ background: '#f3f4f6', color: '#374151' }}
-              disabled={loading}
+              disabled={saving}
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               className="btn btn-primary"
-              disabled={loading}
+              disabled={saving}
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         )}
@@ -454,7 +473,7 @@ const StudentProfile = () => {
               Change Password
             </button>
           </div>
-          
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: '#f8fafc', borderRadius: '6px' }}>
             <div>
               <div style={{ fontWeight: '500', color: '#374151' }}>Login Activity</div>

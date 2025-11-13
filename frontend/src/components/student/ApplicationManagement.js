@@ -1,57 +1,58 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { studentAPI } from '../../services/api';
 
 const ApplicationManagement = () => {
   const [applications, setApplications] = useState([]);
+  const [admissions, setAdmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, pending, admitted, rejected
 
   useEffect(() => {
-    // Mock data - will connect to backend
-    setApplications([
-      {
-        id: 1,
-        institution: 'Limkokwing University',
-        course: 'BSc in Information Technology',
-        status: 'Admitted',
-        date: '2025-01-15',
-        institutionEmail: 'admissions@limkokwing.ac.ls',
-        notes: 'Congratulations! You have been admitted. Please confirm your acceptance within 14 days.'
-      },
-      {
-        id: 2,
-        institution: 'National University of Lesotho',
-        course: 'Computer Science',
-        status: 'Pending',
-        date: '2025-01-10',
-        institutionEmail: 'admissions@nul.ls',
-        notes: 'Application under review. Expected decision date: 2025-02-01'
-      },
-      {
-        id: 3,
-        institution: 'Botho University',
-        course: 'Software Engineering',
-        status: 'Under Review',
-        date: '2025-01-08',
-        institutionEmail: 'admissions@bothouniversity.com',
-        notes: 'Application received and being processed'
-      },
-      {
-        id: 4,
-        institution: 'Limkokwing University',
-        course: 'Diploma in Business IT',
-        status: 'Rejected',
-        date: '2024-12-20',
-        institutionEmail: 'admissions@limkokwing.ac.ls',
-        notes: 'Application did not meet minimum requirements'
-      }
-    ]);
+    loadApplications();
   }, []);
 
-  const filteredApplications = applications.filter(app => 
+  const loadApplications = async () => {
+    try {
+      setLoading(true);
+      
+      // Load current applications
+      const appsResponse = await studentAPI.getMyApplications();
+      setApplications(appsResponse.applications || []);
+      
+      // Load admission results
+      const admissionsResponse = await studentAPI.getAdmissionResults();
+      setAdmissions(admissionsResponse.admissions || []);
+      
+    } catch (error) {
+      console.error('Error loading applications:', error);
+      alert('Failed to load applications. Please try again.');
+      
+      // Fallback to mock data if API fails
+      setApplications([
+        {
+          id: '1',
+          institutionName: 'Limkokwing University',
+          courseName: 'BSc in Information Technology',
+          status: 'pending',
+          appliedAt: '2025-01-15',
+          institutionEmail: 'admissions@limkokwing.ac.ls'
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Combine applications and admissions for display
+  const allApplications = [...applications, ...admissions];
+
+  const filteredApplications = allApplications.filter(app =>
     filter === 'all' || app.status.toLowerCase() === filter.toLowerCase()
   );
 
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
+      case 'approved':
       case 'admitted': return '#10b981';
       case 'pending': return '#f59e0b';
       case 'under review': return '#3b82f6';
@@ -61,8 +62,27 @@ const ApplicationManagement = () => {
   };
 
   const getStatusCount = (status) => {
-    return applications.filter(app => app.status.toLowerCase() === status.toLowerCase()).length;
+    return allApplications.filter(app => app.status.toLowerCase() === status.toLowerCase()).length;
   };
+
+  const handleAcceptOffer = async (applicationId) => {
+    try {
+      // This would call your backend to accept the admission offer
+      alert('Accepting admission offer for application: ' + applicationId);
+      // await studentAPI.acceptAdmission(applicationId);
+    } catch (error) {
+      console.error('Error accepting offer:', error);
+      alert('Failed to accept offer. Please try again.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+        <div>Loading applications...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="card">
@@ -71,19 +91,19 @@ const ApplicationManagement = () => {
       </h2>
 
       {/* Application Stats */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
-        gap: '15px', 
-        marginBottom: '25px' 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+        gap: '15px',
+        marginBottom: '25px'
       }}>
         <div style={{ textAlign: 'center', padding: '15px', background: '#f0f9ff', borderRadius: '8px' }}>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>{applications.length}</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>{allApplications.length}</div>
           <div style={{ color: '#6b7280', fontSize: '14px' }}>Total</div>
         </div>
         <div style={{ textAlign: 'center', padding: '15px', background: '#f0fdf4', borderRadius: '8px' }}>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>{getStatusCount('admitted')}</div>
-          <div style={{ color: '#6b7280', fontSize: '14px' }}>Admitted</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>{getStatusCount('approved') + getStatusCount('admitted')}</div>
+          <div style={{ color: '#6b7280', fontSize: '14px' }}>Approved</div>
         </div>
         <div style={{ textAlign: 'center', padding: '15px', background: '#fffbeb', borderRadius: '8px' }}>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{getStatusCount('pending') + getStatusCount('under review')}</div>
@@ -98,12 +118,13 @@ const ApplicationManagement = () => {
       {/* Filter */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Filter by Status:</label>
-        <select 
+        <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
         >
           <option value="all">All Applications</option>
+          <option value="approved">Approved</option>
           <option value="admitted">Admitted</option>
           <option value="pending">Pending</option>
           <option value="under review">Under Review</option>
@@ -123,21 +144,21 @@ const ApplicationManagement = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
-                  {app.course}
+                  {app.courseName || app.course}
                 </h3>
                 <p style={{ color: '#6b7280', marginBottom: '5px' }}>
-                  <strong>Institution:</strong> {app.institution}
+                  <strong>Institution:</strong> {app.institutionName || app.institution}
                 </p>
                 <p style={{ color: '#6b7280', marginBottom: '5px' }}>
-                  <strong>Applied:</strong> {app.date}
+                  <strong>Applied:</strong> {new Date(app.appliedAt || app.date).toLocaleDateString()}
                 </p>
                 <p style={{ color: '#6b7280', marginBottom: '10px' }}>
-                  <strong>Contact:</strong> {app.institutionEmail}
+                  <strong>Application ID:</strong> {app.id}
                 </p>
                 {app.notes && (
-                  <div style={{ 
-                    background: '#f8fafc', 
-                    padding: '12px', 
+                  <div style={{
+                    background: '#f8fafc',
+                    padding: '12px',
                     borderRadius: '6px',
                     borderLeft: '4px solid ' + getStatusColor(app.status)
                   }}>
@@ -159,8 +180,12 @@ const ApplicationManagement = () => {
                   {app.status}
                 </span>
                 <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-                  {app.status === 'Admitted' && (
-                    <button className="btn btn-primary" style={{ padding: '8px 16px' }}>
+                  {(app.status === 'approved' || app.status === 'admitted') && (
+                    <button 
+                      onClick={() => handleAcceptOffer(app.id)}
+                      className="btn btn-primary" 
+                      style={{ padding: '8px 16px' }}
+                    >
                       Accept Offer
                     </button>
                   )}

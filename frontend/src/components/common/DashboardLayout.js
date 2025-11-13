@@ -1,12 +1,15 @@
 ﻿import React from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
 const DashboardLayout = ({ children, userRole, userName }) => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
+    if (window.confirm('Are you sure you want to logout?')) {
+      logout();
+    }
   };
 
   const getRoleDisplayName = (role) => {
@@ -115,3 +118,5 @@ const DashboardLayout = ({ children, userRole, userName }) => {
 };
 
 export default DashboardLayout;
+
+

@@ -6,8 +6,12 @@ const authController = require('../controllers/authController');
 const authMiddleware = require('../middleware/auth');
 
 // Public routes
+router.post('/check-email', authController.checkEmailAndSendCode);
+router.post('/verify-pre-registration', authController.verifyPreRegistrationEmail);
 router.post('/register', authController.register);
 router.post('/login', authController.login);
+router.post('/verify-email', authController.verifyEmail);
+router.post('/resend-verification', authController.resendVerificationCode);
 
 // Protected routes
 router.get('/profile', authMiddleware.authMiddleware, authController.getProfile);
